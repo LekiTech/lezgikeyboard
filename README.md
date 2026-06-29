@@ -53,7 +53,7 @@ The palochka (vertical bar) is typed as Latin **I** (U+0049), which matches the 
 
 Before installing the native keyboard you can try the layout in any browser — no Xcode needed.
 
-**<a href="https://lekitech.github.io/lezgikeyboard/lezgi_keyboard_prototype.html" target="_blank">Open prototype →</a>**
+**[Open prototype →](https://lekitech.github.io/lezgikeyboard/lezgi_keyboard_prototype.html)**
 
 Or run locally (no server needed):
 ```
