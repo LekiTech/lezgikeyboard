@@ -97,7 +97,8 @@ struct KeyboardView: View {
     private var divider: some View {
         Rectangle()
             .fill(Color(UIColor.separator))
-            .frame(width: 0.5, height: 20)
+            .frame(width: 1, height: 26)
+            .offset(y: -8)
     }
 
     private func suggestionCell(_ word: String) -> some View {
