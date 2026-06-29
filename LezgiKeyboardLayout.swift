@@ -2,26 +2,28 @@
 //  LezgiKeyboardLayout.swift
 //  LezgiChalKeyboard
 //
-//  ЕДИНСТВЕННЫЙ файл, который нужно менять, когда вы добавляете/переставляете буквы.
-//  Здесь нет логики — только данные раскладки, подписи и веса (ширины) клавиш.
+//  Created by Enver Eskendarov on 6/28/26.
+//
+//  Single source of truth for key definitions, labels, callouts, and sizing.
+//  To add or reorder keys, edit letterRows only.
 //
 
 import SwiftUI
 
-/// Что делает клавиша.
-/// .character("й") — вставляет строку. Палочка хранится как латинская "I" (U+0049),
-/// потому что именно так палочка записана в словаре lezgi_words.sqlite.
+/// What a key does when tapped.
+/// .character("ӏ") inserts Cyrillic Palochka (U+04CF) — the correct Unicode character for the Lezgi bar letter.
+/// When querying lezgi_words.sqlite (which uses Latin I), normalize: replace "ӏ" → "I" before the query.
 enum KeyCap: Equatable {
     case character(String)
     case shift
     case backspace
-    case numbers      // переключатель "123"
-    case symbols      // переключатель "#+="
-    case letters      // переключатель "АБВ" (вернуться к буквам)
-    case globe        // 🌐 переключение клавиатур (обязательно для App Store)
-    case emoji        // 😀 (страница эмодзи добавляется в отдельном шаге)
-    case space        // пробел, подпись "Ара"
-    case `return`     // ввод, подпись "Ракъун"
+    case numbers    // switch to "123" page
+    case symbols    // switch to "#+=" page
+    case letters    // switch back to alphabet
+    case globe      // input mode switch (required for App Store)
+    case emoji      // emoji page (Step 4)
+    case space
+    case `return`
 }
 
 enum KeyboardPage {
@@ -30,62 +32,63 @@ enum KeyboardPage {
 
 enum LezgiLayout {
 
-    // MARK: - БУКВЫ  (базовый вариант: ъ стоит справа от пробела, в верхнем ряду его НЕТ)
+    // MARK: - Letter rows (Variant 1: ъ in bottom row, not in top row)
     //
-    // ↓↓↓  ВОТ ЗДЕСЬ ДОБАВЛЯЙТЕ/ПЕРЕСТАВЛЯЙТЕ БУКВЫ  ↓↓↓
-    // Просто допишите символ в нужный ряд — ширина клавиш пересчитается сама.
+    // ↓↓↓  ADD OR REORDER KEYS HERE ONLY  ↓↓↓
     static let letterRows: [[KeyCap]] = [
-        ["й","ц","у","к","е","н","г","ш","I","з","х"].map { .character($0) },   // 11 клавиш
-        ["ф","ы","в","а","п","р","о","л","д","ж","э"].map { .character($0) },   // 11 клавиш
+        ["й","ц","у","к","е","н","г","ш","ӏ","з","х"].map { .character($0) },  // 11 keys
+        ["ф","ы","в","а","п","р","о","л","д","ж","э"].map { .character($0) },  // 11 keys
         [.shift]
             + ["я","ч","с","м","и","т","ь","б","ю"].map { KeyCap.character($0) }
             + [.backspace],
     ]
-    // ↑↑↑  ----------------------------------------  ↑↑↑
+    // ↑↑↑  -----------------------------------  ↑↑↑
 
-    // MARK: - ЦИФРЫ (страница "123")  — стандартный iOS-набор
+    // MARK: - Number page ("123") — standard iOS set
     static let numberRows: [[KeyCap]] = [
         ["1","2","3","4","5","6","7","8","9","0"].map { .character($0) },
         ["-","/",":",";","(",")","₽","&","@","\""].map { .character($0) },
         [.symbols] + [".",",","?","!","'"].map { KeyCap.character($0) } + [.backspace],
     ]
 
-    // MARK: - СИМВОЛЫ (страница "#+=")  — стандартный iOS-набор
+    // MARK: - Symbol page ("#+=") — standard iOS set
     static let symbolRows: [[KeyCap]] = [
         ["[","]","{","}","#","%","^","*","+","="].map { .character($0) },
         ["_","\\","|","~","<",">","€","£","¥","•"].map { .character($0) },
         [.numbers] + [".",",","?","!","'"].map { KeyCap.character($0) } + [.backspace],
     ]
 
-    // MARK: - Альтернативы по долгому нажатию (callouts)
-    // Пока не отрисовываются (это Шаг 3), но данные уже готовы.
-    // Альтернатива вставляется целиком (напр. "цI" = ц+I).
+    // MARK: - Long-press callouts (Step 3)
+    // Alternates are inserted as a whole string (e.g. "цI" = ц + I).
     static let callouts: [String: [String]] = [
-        "ц": ["цI"],
+        "ц": ["цӏ"],
         "у": ["уь"],
-        "к": ["кI", "кь", "къ"],
+        "к": ["кӏ", "кь", "къ"],
         "е": ["ё"],
         "ш": ["щ"],
         "х": ["хь", "хъ"],
-        "п": ["пI"],
-        "ч": ["чI"],
-        "т": ["тI"],
+        "п": ["пӏ"],
+        "ч": ["чӏ"],
+        "т": ["тӏ"],
     ]
 
-    /// Заглавная только у ПЕРВОЙ буквы — для диграфов: "къ" → "Къ", "цI" → "ЦI".
+    // MARK: - Case helpers
+
+    /// Capitalizes only the first character — correct for digraphs: "къ" → "Къ", "цI" → "ЦI".
     static func capitalizedFirst(_ s: String) -> String {
         guard let f = s.first else { return s }
         return String(f).uppercased() + s.dropFirst()
     }
 
-    /// Регистр с учётом режима Shift. Использовать вместо `uppercased()`.
-    /// - capsLock = true  → всё заглавное ("къ" → "КЪ")
-    /// - capsLock = false → только первая буква ("къ" → "Къ")
+    /// Applies shift state to a string. Use instead of .uppercased().
+    /// - capsLock true  → fully uppercase ("къ" → "КЪ")
+    /// - capsLock false → first letter only ("къ" → "Къ")
     static func applyCase(_ s: String, capsLock: Bool) -> String {
         capsLock ? s.uppercased() : capitalizedFirst(s)
     }
 
-    // MARK: - Подписи на клавишах
+    // MARK: - Key labels
+
     static func label(for cap: KeyCap, shifted: Bool) -> String {
         switch cap {
         case .character(let s): return shifted ? s.uppercased() : s
@@ -101,11 +104,12 @@ enum LezgiLayout {
         }
     }
 
-    // MARK: - Вес (относительная ширина) клавиши
+    // MARK: - Key width weight (relative, used as layoutPriority)
+
     static func weight(_ cap: KeyCap) -> CGFloat {
         switch cap {
         case .character:                    return 1.0
-        case .shift, .backspace:            return 1.0   // одинаковые с буквами, как на iOS
+        case .shift, .backspace:            return 1.0
         case .globe, .emoji:                return 1.2
         case .numbers, .symbols, .letters:  return 1.4
         case .return:                       return 1.8
@@ -113,14 +117,15 @@ enum LezgiLayout {
         }
     }
 
-    // MARK: - Размер шрифта подписи
+    // MARK: - Label font size
+
     static func fontSize(for cap: KeyCap) -> CGFloat {
         switch cap {
         case .character:                   return 22
         case .shift, .backspace,
              .globe, .emoji:               return 20
-        case .space:                       return 13   // мелко, как «пробел»
-        case .return:                      return 13   // мелко, как «ввод»
+        case .space:                       return 13
+        case .return:                      return 13
         case .numbers, .symbols, .letters: return 15
         }
     }
