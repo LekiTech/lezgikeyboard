@@ -44,9 +44,9 @@ The palochka (vertical bar) is typed as Latin **I** (U+0049), which matches the 
 
 - [x] **Step 1** — Key grid, character input, shift, backspace, numbers/symbols pages, globe key
 - [x] **Step 2** — Caps Lock (double-tap shift), auto-capitalize, key preview bubble
-- [ ] **Step 3** — Long-press callout menus with swipe selection
+- [x] **Step 3** — Long-press callout menus with swipe selection
 - [ ] **Step 4** — Emoji page
-- [ ] **Step 5** — Word suggestions from `lezgi_words.sqlite`
+- [x] **Step 5** — Word suggestions from `lezgi_words.sqlite`
 - [ ] **Step 6** — Sound/haptic feedback (Full Access), landscape layout, iPad layout
 
 ## Web Prototype
