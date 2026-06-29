@@ -46,7 +46,8 @@
 
   .kb-wrap{
     background:var(--kb-bg);border-radius:8px;
-    overflow:hidden;user-select:none;-webkit-user-select:none;
+    overflow:visible;user-select:none;-webkit-user-select:none;
+    position:relative;
   }
   .suggestion-bar{
     display:flex;height:36px;
@@ -84,9 +85,9 @@
 
   /* всплывающая подсказка (callout) при долгом нажатии */
   .callout{
-    position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+    position:fixed;
     background:#fff;border-radius:9px;box-shadow:0 3px 10px rgba(0,0,0,.28);
-    display:flex;padding:5px;gap:2px;z-index:20;
+    display:flex;padding:5px;gap:2px;z-index:100;
   }
   .callout .opt{
     min-width:38px;height:42px;display:flex;align-items:center;justify-content:center;
@@ -161,6 +162,7 @@ const CALLOUTS = {
   "у":["уь"],
   "к":["кI","кь","къ"],
   "е":["ё"],
+  "г":["гь","гъ"],
   "ш":["щ"],
   "х":["хь","хъ"],
   "п":["пI"],
@@ -351,9 +353,14 @@ kb.addEventListener("pointerdown",(ev)=>{
 
 function openCallout(k, tok){
   closeCallout();
-  const opts = CALLOUTS[tok];
+  const extras = CALLOUTS[tok] || [];
+  const opts = [tok, ...extras.filter(c => c.toLowerCase() !== tok.toLowerCase())];
+
   callout = document.createElement("div");
   callout.className = "callout";
+  callout.style.position = "fixed";
+  callout.style.zIndex = "100";
+
   opts.forEach((c,i)=>{
     const o=document.createElement("div");
     o.className="opt"+(i===0?" sel":"");
@@ -362,10 +369,23 @@ function openCallout(k, tok){
     callout.appendChild(o);
   });
   calloutSel = opts[0];
-  k.appendChild(callout);
+  document.body.appendChild(callout);
+
+  // Position above key, clamped to viewport
+  const kRect = k.getBoundingClientRect();
+  const optW = 44;
+  const totalW = opts.length * optW + 10; // 10 = padding*2
+  const bubbleH = 54;
+
+  let left = kRect.left + kRect.width/2 - totalW/2;
+  left = Math.max(6, Math.min(left, window.innerWidth - totalW - 6));
+  const top = kRect.top - bubbleH - 10;
+
+  callout.style.left = left + "px";
+  callout.style.top = Math.max(4, top) + "px";
 }
 
-kb.addEventListener("pointermove",(ev)=>{
+window.addEventListener("pointermove",(ev)=>{
   if(!callout) return;
   const o = document.elementFromPoint(ev.clientX, ev.clientY);
   const opt = o && o.closest ? o.closest(".opt") : null;
