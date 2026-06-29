@@ -285,6 +285,7 @@ private struct KeyButton: View {
     @State private var isPressed = false
     @State private var isLongPressed = false
     @State private var longPressTimer: DispatchWorkItem? = nil
+    @State private var repeatTimer: Timer? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -301,6 +302,21 @@ private struct KeyButton: View {
                                 isPressed = true
                                 let frame = geo.frame(in: .named("keyboard"))
                                 onPress(frame)
+
+                                // Backspace hold-to-repeat, continuously accelerating
+                                if case .backspace = cap {
+                                    func scheduleRepeat(interval: TimeInterval) {
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + interval) {
+                                            guard isPressed else { return }
+                                            onKey(.backspace)
+                                            scheduleRepeat(interval: max(0.03, interval * 0.85))
+                                        }
+                                    }
+                                    repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in
+                                        guard isPressed else { return }
+                                        scheduleRepeat(interval: 0.1)
+                                    }
+                                }
 
                                 // Schedule long-press for character keys with callouts
                                 if case .character(let s) = cap,
@@ -322,6 +338,8 @@ private struct KeyButton: View {
                         .onEnded { _ in
                             longPressTimer?.cancel()
                             longPressTimer = nil
+                            repeatTimer?.invalidate()
+                            repeatTimer = nil
                             isPressed = false
 
                             if isLongPressed {
