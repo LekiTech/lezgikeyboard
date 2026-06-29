@@ -15,10 +15,27 @@ enum ShiftState {
 final class KeyboardModel: ObservableObject {
 
     @Published var page: KeyboardPage = .letters
-    @Published var shiftState: ShiftState = .once  // auto-capitalize first letter
+    @Published var shiftState: ShiftState = .once
+    @Published var suggestions: [String] = []
+    @Published var returnKeyType: UIReturnKeyType = .default
+    @Published var needsGlobe: Bool = false
 
     var isShifted: Bool { shiftState != .off }
     var isCapsLock: Bool { shiftState == .capsLock }
+
+    private let wordDB = WordSuggestions()
+
+    func updateSuggestions(proxy: UITextDocumentProxy) {
+        let prefix = wordPrefix(proxy: proxy)
+        suggestions = prefix.isEmpty ? [] : (wordDB?.suggestions(for: prefix) ?? [])
+    }
+
+    func wordPrefix(proxy: UITextDocumentProxy) -> String {
+        guard let ctx = proxy.documentContextBeforeInput, !ctx.isEmpty else { return "" }
+        let seps = CharacterSet.whitespacesAndNewlines
+            .union(CharacterSet(charactersIn: ".,!?;:\"'()[]{}—–-"))
+        return ctx.components(separatedBy: seps).last(where: { !$0.isEmpty }) ?? ""
+    }
 
     // MARK: - Key handling
 

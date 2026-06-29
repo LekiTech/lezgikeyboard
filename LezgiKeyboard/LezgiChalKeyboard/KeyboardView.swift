@@ -44,9 +44,8 @@ private func returnLabel(for type: UIReturnKeyType) -> String {
 struct KeyboardView: View {
 
     @ObservedObject var model: KeyboardModel
-    let needsGlobe: Bool
-    let returnKeyType: UIReturnKeyType
     let onKey: (KeyCap) -> Void
+    var onSuggestion: ((String) -> Void)? = nil
 
     // Key preview bubble state
     @State private var pressedCap: KeyCap? = nil
@@ -67,7 +66,7 @@ struct KeyboardView: View {
                 suggestionBar
                 GeometryReader { geo in
                     VStack(spacing: 11) {
-                        ForEach(Array(model.rows(needsGlobe: needsGlobe).enumerated()), id: \.offset) { _, row in
+                        ForEach(Array(model.rows(needsGlobe: model.needsGlobe).enumerated()), id: \.offset) { _, row in
                             rowView(row: row, totalWidth: geo.size.width - 12)
                         }
                     }
@@ -104,14 +103,21 @@ struct KeyboardView: View {
     // MARK: - Suggestion bar
 
     private var suggestionBar: some View {
-        HStack(alignment: .center, spacing: 0) {
-            suggestionCell("Зун")
+        let words = paddedSuggestions()
+        return HStack(alignment: .center, spacing: 0) {
+            suggestionCell(words[0])
             divider
-            suggestionCell("Вун")
+            suggestionCell(words[1])
             divider
-            suggestionCell("ГьикI")
+            suggestionCell(words[2])
         }
         .frame(height: 36)
+    }
+
+    private func paddedSuggestions() -> [String] {
+        var s = model.suggestions
+        while s.count < 3 { s.append("") }
+        return s
     }
 
     private var divider: some View {
@@ -124,9 +130,14 @@ struct KeyboardView: View {
     private func suggestionCell(_ word: String) -> some View {
         Text(word)
             .font(.system(size: 16))
-            .foregroundColor(Color(UIColor.label))
+            .foregroundColor(word.isEmpty ? .clear : Color(UIColor.label))
             .frame(maxWidth: .infinity, maxHeight: 36, alignment: .center)
             .offset(y: -8)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard !word.isEmpty else { return }
+                onSuggestion?(word)
+            }
     }
 
     // MARK: - Key row
@@ -142,7 +153,7 @@ struct KeyboardView: View {
                 KeyButton(
                     cap: cap,
                     model: model,
-                    returnKeyType: returnKeyType,
+                    returnKeyType: model.returnKeyType,
                     onKey: { tappedCap in
                         onKey(tappedCap)
                     },

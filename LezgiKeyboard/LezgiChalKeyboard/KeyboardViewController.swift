@@ -20,13 +20,14 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
-        hostingController?.rootView = makeKeyboardView()
+        model.needsGlobe = needsInputModeSwitchKey
+        model.returnKeyType = textDocumentProxy.returnKeyType ?? .default
     }
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
-        // Update return key label when context changes
-        hostingController?.rootView = makeKeyboardView()
+        model.returnKeyType = textDocumentProxy.returnKeyType ?? .default
+        model.updateSuggestions(proxy: textDocumentProxy)
     }
 
     private func setupKeyboard() {
@@ -68,15 +69,21 @@ class KeyboardViewController: UIInputViewController {
     private func makeKeyboardView() -> KeyboardView {
         KeyboardView(
             model: model,
-            needsGlobe: needsInputModeSwitchKey,
-            returnKeyType: textDocumentProxy.returnKeyType ?? .default
-        ) { [weak self] cap in
-            guard let self else { return }
-            if cap == .globe {
-                self.advanceToNextInputMode()
-                return
+            onKey: { [weak self] cap in
+                guard let self else { return }
+                if cap == .globe { self.advanceToNextInputMode(); return }
+                self.model.handleKey(cap, proxy: self.textDocumentProxy)
+                self.model.updateSuggestions(proxy: self.textDocumentProxy)
+            },
+            onSuggestion: { [weak self] word in
+                guard let self else { return }
+                let prefix = self.model.wordPrefix(proxy: self.textDocumentProxy)
+                for _ in prefix { self.textDocumentProxy.deleteBackward() }
+                self.textDocumentProxy.insertText(word + " ")
+                if self.model.shiftState == .once { self.model.shiftState = .off }
+                self.model.suggestions = []
+                self.model.updateSuggestions(proxy: self.textDocumentProxy)
             }
-            self.model.handleKey(cap, proxy: self.textDocumentProxy)
-        }
+        )
     }
 }
