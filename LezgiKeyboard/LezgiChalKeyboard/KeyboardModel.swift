@@ -1,0 +1,83 @@
+//
+//  KeyboardModel.swift
+//  LezgiChalKeyboard
+//
+//  Created by Enver Eskendarov on 6/28/26.
+//
+
+import UIKit
+import Combine
+
+enum ShiftState {
+    case off, once, capsLock
+}
+
+final class KeyboardModel: ObservableObject {
+
+    @Published var page: KeyboardPage = .letters
+    @Published var shiftState: ShiftState = .once  // auto-capitalize first letter
+
+    var isShifted: Bool { shiftState != .off }
+    var isCapsLock: Bool { shiftState == .capsLock }
+
+    // MARK: - Key handling
+
+    func handleKey(_ cap: KeyCap, proxy: UITextDocumentProxy) {
+        switch cap {
+
+        case .character(let s):
+            let text = isShifted ? LezgiLayout.applyCase(s, capsLock: isCapsLock) : s
+            proxy.insertText(text)
+            if shiftState == .once { shiftState = .off }
+
+        case .space:
+            proxy.insertText(" ")
+
+        case .return:
+            proxy.insertText("\n")
+
+        case .backspace:
+            proxy.deleteBackward()
+
+        case .shift:
+            // off → once (single shift) → capsLock (double tap) → off
+            switch shiftState {
+            case .off:      shiftState = .once
+            case .once:     shiftState = .capsLock
+            case .capsLock: shiftState = .off
+            }
+
+        case .numbers:  page = .numbers
+        case .symbols:  page = .symbols
+        case .letters:  page = .letters
+        case .globe, .emoji: break
+        }
+    }
+
+    // MARK: - Layout
+
+    func rows(needsGlobe: Bool) -> [[KeyCap]] {
+        let main: [[KeyCap]]
+        switch page {
+        case .letters: main = LezgiLayout.letterRows
+        case .numbers: main = LezgiLayout.numberRows
+        case .symbols: main = LezgiLayout.symbolRows
+        }
+        return main + [bottomRow(needsGlobe: needsGlobe)]
+    }
+
+    private func bottomRow(needsGlobe: Bool) -> [KeyCap] {
+        switch page {
+        case .letters:
+            var row: [KeyCap] = [.numbers, .emoji]
+            if needsGlobe { row.append(.globe) }
+            row += [.space, .character("ъ"), .return]
+            return row
+        case .numbers, .symbols:
+            var row: [KeyCap] = [.letters]
+            if needsGlobe { row.append(.globe) }
+            row += [.space, .return]
+            return row
+        }
+    }
+}
