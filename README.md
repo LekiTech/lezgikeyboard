@@ -49,6 +49,26 @@ The palochka (vertical bar) is typed as Latin **I** (U+0049), which matches the 
 - [ ] **Step 5** — Word suggestions from `lezgi_words.sqlite`
 - [ ] **Step 6** — Sound/haptic feedback (Full Access), landscape layout, iPad layout
 
+## Web Prototype
+
+Before installing the native keyboard you can try the layout in any browser — no Xcode needed.
+
+**[Open prototype →](https://lekitech.github.io/lezgikeyboard/lezgi_keyboard_prototype.html)**
+
+Or open the file locally:
+```
+open lezgi_keyboard_prototype.html
+```
+
+The prototype supports:
+- Both layout variants (ъ in bottom row vs. ъ in top row)
+- Shift, Caps Lock (double-tap), auto-capitalize
+- Long-press callout menus with swipe selection (цI, уь, кь, ё…)
+- Backspace hold-to-repeat
+- Double space → period
+
+It is kept in sync with the native layout so it can be used to evaluate key placement before building.
+
 ## Requirements
 
 - iOS 15+
