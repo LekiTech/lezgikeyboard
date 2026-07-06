@@ -46,6 +46,7 @@ struct KeyboardView: View {
     @ObservedObject var model: KeyboardModel
     let onKey: (KeyCap) -> Void
     var onSuggestion: ((String) -> Void)? = nil
+    var onEmojiInsert: ((String) -> Void)? = nil
 
     // Key preview bubble state
     @State private var pressedCap: KeyCap? = nil
@@ -62,17 +63,21 @@ struct KeyboardView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            VStack(spacing: 0) {
-                suggestionBar
-                GeometryReader { geo in
-                    VStack(spacing: 11) {
-                        let allRows = model.rows(needsGlobe: model.needsGlobe)
-                        ForEach(Array(allRows.enumerated()), id: \.offset) { i, row in
-                            rowView(row: row, totalWidth: geo.size.width - 12,
-                                    rowIndex: i, totalRows: allRows.count)
+            if model.page == .emoji {
+                emojiPage
+            } else {
+                VStack(spacing: 0) {
+                    suggestionBar
+                    GeometryReader { geo in
+                        VStack(spacing: 11) {
+                            let allRows = model.rows(needsGlobe: model.needsGlobe)
+                            ForEach(Array(allRows.enumerated()), id: \.offset) { i, row in
+                                rowView(row: row, totalWidth: geo.size.width - 12,
+                                        rowIndex: i, totalRows: allRows.count)
+                            }
                         }
+                        .padding(.horizontal, 6)
                     }
-                    .padding(.horizontal, 6)
                 }
             }
 
@@ -141,6 +146,73 @@ struct KeyboardView: View {
                 guard !word.isEmpty else { return }
                 onSuggestion?(word)
             }
+    }
+
+    // MARK: - Emoji page
+
+    private var emojiPage: some View {
+        VStack(spacing: 0) {
+            // Header — same height as suggestion bar to keep total keyboard height stable
+            Text("Эмодзи")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(Color(UIColor.secondaryLabel))
+                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(height: 36)
+
+            // Scrollable emoji grid
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 4) {
+                    ForEach(KeyboardModel.emojiSections, id: \.title) { section in
+                        Text(section.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(UIColor.secondaryLabel))
+                            .padding(.horizontal, 8)
+                            .padding(.top, 4)
+                        LazyVGrid(
+                            columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 8),
+                            spacing: 2
+                        ) {
+                            ForEach(section.emoji, id: \.self) { emoji in
+                                Text(emoji)
+                                    .font(.system(size: 26))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 40)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { onEmojiInsert?(emoji) }
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity)
+
+            // Bottom bar: ABC + backspace
+            HStack(spacing: 6) {
+                Button(action: { onKey(.letters) }) {
+                    Text("АБВ")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(Color(UIColor.label))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 43)
+                        .background(Color.kbFuncKey)
+                        .cornerRadius(8)
+                        .shadow(color: .black.opacity(0.3), radius: 0, x: 0, y: 1)
+                }
+                Button(action: { onKey(.backspace) }) {
+                    Image(systemName: "delete.backward")
+                        .font(.system(size: 18))
+                        .foregroundColor(Color(UIColor.label))
+                        .frame(width: 80)
+                        .frame(height: 43)
+                        .background(Color.kbFuncKey)
+                        .cornerRadius(8)
+                        .shadow(color: .black.opacity(0.3), radius: 0, x: 0, y: 1)
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 4)
+        }
     }
 
     // MARK: - Key row

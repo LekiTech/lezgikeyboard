@@ -67,9 +67,51 @@ final class KeyboardModel: ObservableObject {
         case .numbers:  page = .numbers
         case .symbols:  page = .symbols
         case .letters:  page = .letters
-        case .globe, .emoji: break
+        case .emoji:    page = .emoji
+        case .globe:    break
         }
     }
+
+    // MARK: - Emoji
+
+    func insertEmoji(_ emoji: String, proxy: UITextDocumentProxy) {
+        proxy.insertText(emoji)
+    }
+
+    static let emojiSections: [(title: String, emoji: [String])] = [
+        ("Чинар", [
+            "😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃",
+            "😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙",
+            "😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔",
+            "😐","😑","😶","😏","😒","🙄","😬","🤥","😔","😪",
+            "🤤","😴","😷","🤒","🤕","🥴","😵","🤯","🥳","😎",
+            "😭","😢","😤","😠","😡","🤬","💀","💩","🤡","👻",
+        ]),
+        ("Инсанар", [
+            "👋","🤚","✋","🖐","👌","🤌","🤏","✌️","🤞","🤟",
+            "🤘","👍","👎","✊","👊","🤛","🤜","👏","🙌","🫶",
+            "🤝","🙏","💪","🦾","👀","👁","👄","💋","🫀","🧠",
+            "👶","👧","🧒","👦","👩","🧑","👨","👴","👵","🧓",
+            "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔",
+        ]),
+        ("Тӏебиат", [
+            "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯",
+            "🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐔","🐧",
+            "🌸","🌺","🌻","🌹","🍀","🌿","🌲","🌳","🌴","🌵",
+            "🌊","🔥","⭐️","🌙","☀️","❄️","🌈","⛅️","🌧","⚡️",
+        ]),
+        ("Тӏуьн", [
+            "🍎","🍊","🍋","🍇","🍓","🍑","🍒","🍍","🥭","🍌",
+            "🍕","🍔","🍟","🌮","🌯","🥗","🍜","🍣","🍱","🥡",
+            "☕️","🍵","🧃","🥤","🍺","🍷","🥂","🍾","🧁","🎂",
+        ]),
+        ("Символар", [
+            "✅","❌","❓","❗️","💯","🔥","⚡️","💡","🔑","🔒",
+            "📱","💻","🖥","⌨️","🖨","📷","🎵","🎶","🎉","🎊",
+            "🏆","🥇","🎯","🎲","🎮","♟","🎭","🎨","🎬","📚",
+            "💰","💳","💎","🚀","✈️","🚗","🏠","🌍","🗺","🧭",
+        ]),
+    ]
 
     // MARK: - Layout
 
@@ -79,6 +121,7 @@ final class KeyboardModel: ObservableObject {
         case .letters: main = LezgiLayout.letterRows
         case .numbers: main = LezgiLayout.numberRows
         case .symbols: main = LezgiLayout.symbolRows
+        case .emoji:   return []
         }
         return main + [bottomRow(needsGlobe: needsGlobe)]
     }
@@ -95,6 +138,8 @@ final class KeyboardModel: ObservableObject {
             if needsGlobe { row.append(.globe) }
             row += [.space, .return]
             return row
+        case .emoji:
+            return []
         }
     }
 }

@@ -27,7 +27,7 @@ enum KeyCap: Equatable {
 }
 
 enum KeyboardPage {
-    case letters, numbers, symbols
+    case letters, numbers, symbols, emoji
 }
 
 enum LezgiLayout {

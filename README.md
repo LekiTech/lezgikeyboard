@@ -48,6 +48,8 @@ The palochka (vertical bar) is typed as Latin **I** (U+0049), which matches the 
 - [ ] **Step 4** — Emoji page
 - [x] **Step 5** — Word suggestions from `lezgi_words.sqlite`
 - [ ] **Step 6** — Sound/haptic feedback (Full Access), landscape layout, iPad layout
+- [ ] **Spacebar cursor control** — long-press and drag on spacebar moves the insertion point through text, matching native iOS keyboard behavior
+- [x] **TODO** — Improve key hit areas so gaps between keys still register nearest key, like native iOS keyboard (visual size unchanged, only touch target expanded)
 
 ## Web Prototype
 

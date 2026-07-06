@@ -83,6 +83,10 @@ class KeyboardViewController: UIInputViewController {
                 if self.model.shiftState == .once { self.model.shiftState = .off }
                 self.model.suggestions = []
                 self.model.updateSuggestions(proxy: self.textDocumentProxy)
+            },
+            onEmojiInsert: { [weak self] emoji in
+                guard let self else { return }
+                self.textDocumentProxy.insertText(emoji)
             }
         )
     }
