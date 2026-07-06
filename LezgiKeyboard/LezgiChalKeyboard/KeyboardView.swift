@@ -66,8 +66,10 @@ struct KeyboardView: View {
                 suggestionBar
                 GeometryReader { geo in
                     VStack(spacing: 11) {
-                        ForEach(Array(model.rows(needsGlobe: model.needsGlobe).enumerated()), id: \.offset) { _, row in
-                            rowView(row: row, totalWidth: geo.size.width - 12)
+                        let allRows = model.rows(needsGlobe: model.needsGlobe)
+                        ForEach(Array(allRows.enumerated()), id: \.offset) { i, row in
+                            rowView(row: row, totalWidth: geo.size.width - 12,
+                                    rowIndex: i, totalRows: allRows.count)
                         }
                     }
                     .padding(.horizontal, 6)
@@ -143,60 +145,188 @@ struct KeyboardView: View {
 
     // MARK: - Key row
 
-    private func rowView(row: [KeyCap], totalWidth: CGFloat) -> some View {
-        let spacing: CGFloat = 6
-        let totalWeight = row.map { LezgiLayout.weight($0) }.reduce(0, +)
-        let totalSpacing = spacing * CGFloat(row.count - 1)
-        let unitWidth = (totalWidth - totalSpacing) / totalWeight
+    private func rowView(row: [KeyCap], totalWidth: CGFloat,
+                         rowIndex: Int = 0, totalRows: Int = 1) -> some View {
+        RowView(
+            row: row, totalWidth: totalWidth, rowIndex: rowIndex, totalRows: totalRows,
+            model: model,
+            onKey: onKey,
+            onPress: { cap, frame in
+                pressedCap = cap
+                pressedFrame = frame
+            },
+            onRelease: { pressedCap = nil },
+            onLongPress: { frame, options in
+                pressedCap = nil
+                calloutFrame = frame
+                calloutOptions = options
+                let totalW = calloutOptionWidth * CGFloat(options.count)
+                let screenWidth = UIScreen.main.bounds.width
+                let bubbleX = min(max(frame.midX, totalW / 2 + 6), screenWidth - totalW / 2 - 6)
+                let leftX = bubbleX - totalW / 2
+                calloutBubbleLeftX = leftX
+                let initialLocal = frame.midX - leftX
+                calloutSelectedIndex = max(0, min(options.count - 1, Int(initialLocal / calloutOptionWidth)))
+                isShowingCallout = true
+            },
+            onDragMoved: { dragX in
+                let localX = dragX - calloutBubbleLeftX
+                let idx = Int(localX / calloutOptionWidth)
+                calloutSelectedIndex = max(0, min(calloutOptions.count - 1, idx))
+            },
+            onLongRelease: {
+                if isShowingCallout {
+                    let selected = calloutOptions[calloutSelectedIndex]
+                    onKey(.character(selected))
+                }
+                isShowingCallout = false
+                calloutOptions = []
+            }
+        )
+    }
+}
 
-        return HStack(spacing: spacing) {
-            ForEach(Array(row.enumerated()), id: \.offset) { _, cap in
-                KeyButton(
-                    cap: cap,
-                    model: model,
-                    returnKeyType: model.returnKeyType,
-                    onKey: { tappedCap in
-                        onKey(tappedCap)
-                    },
-                    onPress: { frame in
-                        pressedCap = cap
-                        pressedFrame = frame
-                    },
-                    onRelease: {
-                        pressedCap = nil
-                    },
-                    onLongPress: { frame, options in
-                        pressedCap = nil
-                        calloutFrame = frame
-                        calloutOptions = options
-                        // Calculate clamped bubble position (mirrors CalloutBubble layout)
-                        let totalWidth = calloutOptionWidth * CGFloat(options.count)
-                        let screenWidth = UIScreen.main.bounds.width
-                        let bubbleX = min(max(frame.midX, totalWidth / 2 + 6), screenWidth - totalWidth / 2 - 6)
-                        let leftX = bubbleX - totalWidth / 2
-                        calloutBubbleLeftX = leftX
-                        // Initial selection: option under the finger (key center relative to bubble)
-                        let initialLocal = frame.midX - leftX
-                        calloutSelectedIndex = max(0, min(options.count - 1, Int(initialLocal / calloutOptionWidth)))
-                        isShowingCallout = true
-                    },
-                    onDragMoved: { dragX in
-                        let localX = dragX - calloutBubbleLeftX
-                        let idx = Int(localX / calloutOptionWidth)
-                        calloutSelectedIndex = max(0, min(calloutOptions.count - 1, idx))
-                    },
-                    onLongRelease: {
-                        if isShowingCallout {
-                            let selected = calloutOptions[calloutSelectedIndex]
-                            onKey(.character(selected))  // handleKey applies case+shift
-                        }
-                        isShowingCallout = false
-                        calloutOptions = []
+// MARK: - Row view with expanded hit zones
+
+private struct RowView: View {
+
+    let row: [KeyCap]
+    let totalWidth: CGFloat
+    let rowIndex: Int
+    let totalRows: Int
+    @ObservedObject var model: KeyboardModel
+    let onKey: (KeyCap) -> Void
+    let onPress: (KeyCap, CGRect) -> Void
+    let onRelease: () -> Void
+    let onLongPress: (CGRect, [String]) -> Void
+    let onDragMoved: (CGFloat) -> Void
+    let onLongRelease: () -> Void
+
+    @State private var rowMinY: CGFloat = 0
+    @State private var isPressed = false
+    @State private var isLongPressed = false
+    @State private var longPressTimer: DispatchWorkItem? = nil
+    @State private var repeatTimer: Timer? = nil
+    @State private var activeCap: KeyCap? = nil
+
+    private let spacing: CGFloat = 6
+    private let keyHeight: CGFloat = 43
+    private let rowSpacing: CGFloat = 11
+    // Row x-origin in keyboard space matches .padding(.horizontal, 6) on the VStack
+    private let rowLeadingX: CGFloat = 6
+
+    private var unitWidth: CGFloat {
+        let totalWeight = row.map { LezgiLayout.weight($0) }.reduce(0, +)
+        let totalSpacingPts = spacing * CGFloat(row.count - 1)
+        return (totalWidth - totalSpacingPts) / totalWeight
+    }
+    private var topExpand:    CGFloat { rowIndex == 0             ? 0 : rowSpacing / 2 }
+    private var bottomExpand: CGFloat { rowIndex == totalRows - 1 ? 0 : rowSpacing / 2 }
+    private var zoneHeight:   CGFloat { keyHeight + topExpand + bottomExpand }
+
+    // Visual key frames in keyboard coordinate space.
+    private var keyFrames: [(cap: KeyCap, frame: CGRect)] {
+        var result: [(KeyCap, CGRect)] = []
+        var x = rowLeadingX
+        for cap in row {
+            let kw = unitWidth * LezgiLayout.weight(cap)
+            result.append((cap, CGRect(x: x, y: rowMinY, width: kw, height: keyHeight)))
+            x += kw + spacing
+        }
+        return result
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            // Visual layer
+            HStack(spacing: spacing) {
+                ForEach(Array(row.enumerated()), id: \.offset) { _, cap in
+                    KeyButton(cap: cap, model: model, returnKeyType: model.returnKeyType)
+                        .frame(width: unitWidth * LezgiLayout.weight(cap), height: keyHeight)
+                }
+            }
+            .background(
+                GeometryReader { geo in
+                    Color.clear.onAppear {
+                        rowMinY = geo.frame(in: .named("keyboard")).minY
                     }
+                }
+            )
+
+            // Gesture layer: single transparent rect, expanded to cover vertical gaps.
+            // Color.clear does not receive touches in SwiftUI; use near-zero opacity instead.
+            Color.white.opacity(0.001)
+                .frame(height: zoneHeight)
+                .offset(y: -topExpand)
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .named("keyboard"))
+                        .onChanged { value in handleChanged(value: value) }
+                        .onEnded   { _     in handleEnded() }
                 )
-                .frame(width: unitWidth * LezgiLayout.weight(cap), height: 43)
+        }
+        .frame(height: keyHeight)  // keep layout height at 43pt so VStack spacing is unchanged
+    }
+
+    // Find key whose visual midX is closest to touchX
+    private func nearest(touchX: CGFloat) -> (cap: KeyCap, frame: CGRect)? {
+        keyFrames.min(by: { abs($0.frame.midX - touchX) < abs($1.frame.midX - touchX) })
+    }
+
+    private func handleChanged(value: DragGesture.Value) {
+        guard !isPressed else {
+            if isLongPressed { onDragMoved(value.location.x) }
+            return
+        }
+        isPressed = true
+        guard let key = nearest(touchX: value.location.x) else { return }
+        activeCap = key.cap
+        onPress(key.cap, key.frame)
+
+        // Backspace hold-to-repeat with acceleration
+        if case .backspace = key.cap {
+            func scheduleRepeat(interval: TimeInterval) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + interval) {
+                    guard isPressed else { return }
+                    onKey(.backspace)
+                    scheduleRepeat(interval: max(0.03, interval * 0.85))
+                }
+            }
+            repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in
+                guard isPressed else { return }
+                scheduleRepeat(interval: 0.1)
             }
         }
+
+        // Long-press for character keys that have callout options
+        if case .character(let s) = key.cap,
+           let extras = LezgiLayout.callouts[s.lowercased()], !extras.isEmpty {
+            let base = s.lowercased()
+            let opts = [base] + extras.filter { $0.lowercased() != base }
+            let frame = key.frame
+            let work = DispatchWorkItem {
+                isLongPressed = true
+                onLongPress(frame, opts)
+            }
+            longPressTimer = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
+        }
+    }
+
+    private func handleEnded() {
+        longPressTimer?.cancel()
+        longPressTimer = nil
+        repeatTimer?.invalidate()
+        repeatTimer = nil
+        isPressed = false
+
+        if isLongPressed {
+            isLongPressed = false
+            onLongRelease()
+        } else {
+            onRelease()
+            if let cap = activeCap { onKey(cap) }
+        }
+        activeCap = nil
     }
 }
 
@@ -219,10 +349,11 @@ private struct CalloutBubble: View {
             max(keyFrame.midX, totalWidth / 2 + 6),
             UIScreen.main.bounds.width - totalWidth / 2 - 6
         )
-        let desiredY = keyFrame.minY - bubbleHeight / 2 - 8
+        let tailHeight: CGFloat = 8
+        let desiredY = keyFrame.minY - bubbleHeight / 2 - tailHeight - 4
         let bubbleY = max(desiredY, bubbleHeight / 2)
 
-        return ZStack {
+        return VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(Array(options.enumerated()), id: \.offset) { i, opt in
                     let display = isShifted
@@ -232,11 +363,15 @@ private struct CalloutBubble: View {
                         .font(.system(size: 24))
                         .foregroundColor(i == selectedIndex ? .white : Color(UIColor.label))
                         .frame(width: optionWidth, height: bubbleHeight)
-                        .background(i == selectedIndex ? Color.blue : Color(UIColor.systemBackground))
+                        .background(i == selectedIndex ? Color.blue : Color.kbLetterKey)
                 }
             }
             .cornerRadius(10)
             .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
+
+            Triangle()
+                .fill(Color.kbLetterKey)
+                .frame(width: 14, height: tailHeight)
         }
         .position(x: bubbleX, y: bubbleY)
     }
@@ -254,12 +389,12 @@ private struct KeyPreviewBubble: View {
                 .font(.system(size: 28))
                 .foregroundColor(Color(UIColor.label))
                 .frame(width: max(frame.width, 44), height: 54)
-                .background(Color(UIColor.systemBackground))
+                .background(Color.kbLetterKey)
                 .cornerRadius(8)
                 .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
 
             Triangle()
-                .fill(Color(UIColor.systemBackground))
+                .fill(Color.kbLetterKey)
                 .frame(width: 14, height: 8)
         }
         .position(
@@ -280,90 +415,21 @@ private struct Triangle: Shape {
     }
 }
 
-// MARK: - Single key
+// MARK: - Single key (visual only — gestures handled by RowView)
 
 private struct KeyButton: View {
 
     let cap: KeyCap
     @ObservedObject var model: KeyboardModel
     let returnKeyType: UIReturnKeyType
-    let onKey: (KeyCap) -> Void
-    let onPress: (CGRect) -> Void
-    let onRelease: () -> Void
-    let onLongPress: (CGRect, [String]) -> Void
-    let onDragMoved: (CGFloat) -> Void
-    let onLongRelease: () -> Void
-
-    @State private var isPressed = false
-    @State private var isLongPressed = false
-    @State private var longPressTimer: DispatchWorkItem? = nil
-    @State private var repeatTimer: Timer? = nil
 
     var body: some View {
-        GeometryReader { geo in
-            keyLabel
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(backgroundColor)
-                .cornerRadius(8)
-                .shadow(color: .black.opacity(0.3), radius: 0, x: 0, y: 1)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0, coordinateSpace: .named("keyboard"))
-                        .onChanged { value in
-                            if !isPressed {
-                                isPressed = true
-                                let frame = geo.frame(in: .named("keyboard"))
-                                onPress(frame)
-
-                                // Backspace hold-to-repeat, continuously accelerating
-                                if case .backspace = cap {
-                                    func scheduleRepeat(interval: TimeInterval) {
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + interval) {
-                                            guard isPressed else { return }
-                                            onKey(.backspace)
-                                            scheduleRepeat(interval: max(0.03, interval * 0.85))
-                                        }
-                                    }
-                                    repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in
-                                        guard isPressed else { return }
-                                        scheduleRepeat(interval: 0.1)
-                                    }
-                                }
-
-                                // Schedule long-press for character keys with callouts
-                                if case .character(let s) = cap,
-                                   let extras = LezgiLayout.callouts[s.lowercased()], !extras.isEmpty {
-                                    let base = s.lowercased()
-                                    let opts = [base] + extras.filter { $0.lowercased() != base }
-                                    let work = DispatchWorkItem {
-                                        isLongPressed = true
-                                        let f = geo.frame(in: .named("keyboard"))
-                                        onLongPress(f, opts)
-                                    }
-                                    longPressTimer = work
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
-                                }
-                            } else if isLongPressed {
-                                onDragMoved(value.location.x)
-                            }
-                        }
-                        .onEnded { _ in
-                            longPressTimer?.cancel()
-                            longPressTimer = nil
-                            repeatTimer?.invalidate()
-                            repeatTimer = nil
-                            isPressed = false
-
-                            if isLongPressed {
-                                isLongPressed = false
-                                onLongRelease()
-                            } else {
-                                onRelease()
-                                onKey(cap)
-                            }
-                        }
-                )
-        }
+        keyLabel
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(backgroundColor)
+            .cornerRadius(8)
+            .shadow(color: .black.opacity(0.3), radius: 0, x: 0, y: 1)
+            .allowsHitTesting(false)
     }
 
     @ViewBuilder
