@@ -52,6 +52,9 @@ struct KeyboardView: View {
     @State private var pressedCap: KeyCap? = nil
     @State private var pressedFrame: CGRect = .zero
 
+    // Suggestion bar press state
+    @State private var pressedSuggestionIndex: Int? = nil
+
     // Callout state
     @State private var calloutFrame: CGRect = .zero
     @State private var calloutOptions: [String] = []
@@ -111,14 +114,43 @@ struct KeyboardView: View {
 
     private var suggestionBar: some View {
         let words = paddedSuggestions()
-        return HStack(alignment: .center, spacing: 0) {
-            suggestionCell(words[0])
-            divider
-            suggestionCell(words[1])
-            divider
-            suggestionCell(words[2])
+        return ZStack(alignment: .leading) {
+            // Visual layer: highlights + text + dividers, no gestures
+            HStack(alignment: .center, spacing: 0) {
+                suggestionCellVisual(words[0], index: 0)
+                suggestionDivider
+                suggestionCellVisual(words[1], index: 1)
+                suggestionDivider
+                suggestionCellVisual(words[2], index: 2)
+            }
+
+            // Gesture layer: single full-width transparent rect, dispatches by x position
+            GeometryReader { geo in
+                Color.white.opacity(0.001)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let idx = suggestionIndex(x: value.location.x, width: geo.size.width)
+                                if pressedSuggestionIndex != idx { pressedSuggestionIndex = idx }
+                            }
+                            .onEnded { value in
+                                let idx = suggestionIndex(x: value.location.x, width: geo.size.width)
+                                pressedSuggestionIndex = nil
+                                let word = words[idx]
+                                guard !word.isEmpty else { return }
+                                onSuggestion?(word)
+                            }
+                    )
+            }
         }
         .frame(height: 36)
+    }
+
+    private func suggestionIndex(x: CGFloat, width: CGFloat) -> Int {
+        let third = width / 3
+        if x < third { return 0 }
+        if x < third * 2 { return 1 }
+        return 2
     }
 
     private func paddedSuggestions() -> [String] {
@@ -128,24 +160,26 @@ struct KeyboardView: View {
         return s
     }
 
-    private var divider: some View {
+    private var suggestionDivider: some View {
         Rectangle()
             .fill(Color(UIColor.separator))
             .frame(width: 1, height: 26)
-            .offset(y: -8)
     }
 
-    private func suggestionCell(_ word: String) -> some View {
-        Text(word)
-            .font(.system(size: 16))
-            .foregroundColor(word.isEmpty ? .clear : Color(UIColor.label))
-            .frame(maxWidth: .infinity, maxHeight: 36, alignment: .center)
-            .offset(y: -8)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                guard !word.isEmpty else { return }
-                onSuggestion?(word)
+    private func suggestionCellVisual(_ word: String, index: Int) -> some View {
+        ZStack {
+            if pressedSuggestionIndex == index {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.kbLetterKey)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
             }
+            Text(word)
+                .font(.system(size: 16))
+                .lineLimit(1)
+                .foregroundColor(word.isEmpty ? .clear : Color(UIColor.label))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Emoji page
