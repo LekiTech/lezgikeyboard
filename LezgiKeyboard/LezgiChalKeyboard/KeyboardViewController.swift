@@ -73,6 +73,9 @@ class KeyboardViewController: UIInputViewController {
                 guard let self else { return }
                 if cap == .globe { self.advanceToNextInputMode(); return }
                 self.model.handleKey(cap, proxy: self.textDocumentProxy)
+                if cap == .backspace {
+                    self.model.autoCapitalizeIfNeeded(proxy: self.textDocumentProxy)
+                }
                 self.model.updateSuggestions(proxy: self.textDocumentProxy)
             },
             onSuggestion: { [weak self] word in

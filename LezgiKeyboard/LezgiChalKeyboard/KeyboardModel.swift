@@ -46,6 +46,10 @@ final class KeyboardModel: ObservableObject {
             let text = isShifted ? LezgiLayout.applyCase(s, capsLock: isCapsLock) : s
             proxy.insertText(text)
             if shiftState == .once { shiftState = .off }
+            if s == "." && (page == .numbers || page == .symbols) {
+                page = .letters
+                if shiftState != .capsLock { shiftState = .once }
+            }
 
         case .space:
             proxy.insertText(" ")
@@ -70,6 +74,13 @@ final class KeyboardModel: ObservableObject {
         case .emoji:    page = .emoji
         case .globe:    break
         }
+    }
+
+    func autoCapitalizeIfNeeded(proxy: UITextDocumentProxy) {
+        guard shiftState != .capsLock else { return }
+        let before = proxy.documentContextBeforeInput ?? ""
+        let after  = proxy.documentContextAfterInput  ?? ""
+        if before.isEmpty && after.isEmpty { shiftState = .once }
     }
 
     // MARK: - Emoji
