@@ -90,6 +90,7 @@ class KeyboardViewController: UIInputViewController {
             onEmojiInsert: { [weak self] emoji in
                 guard let self else { return }
                 self.textDocumentProxy.insertText(emoji)
+                self.model.recordRecentEmoji(emoji)
             }
         )
     }

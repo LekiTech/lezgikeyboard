@@ -20,11 +20,6 @@ private extension Color {
             ? UIColor(red: 0.36, green: 0.36, blue: 0.37, alpha: 1)
             : UIColor(red: 0.82, green: 0.84, blue: 0.87, alpha: 1)
     }))
-    static let kbFuncKey = Color(UIColor(dynamicProvider: { t in
-        t.userInterfaceStyle == .dark
-            ? UIColor(red: 0.110, green: 0.110, blue: 0.118, alpha: 1)
-            : UIColor(red: 0.678, green: 0.702, blue: 0.733, alpha: 1)
-    }))
 }
 
 // MARK: - Return key label
@@ -59,6 +54,9 @@ struct KeyboardView: View {
 
     // Suggestion bar press state
     @State private var pressedSuggestionIndex: Int? = nil
+
+    // Emoji page state
+    @State private var emojiCurrentSection: Int = 0
 
     // Callout state
     @State private var calloutFrame: CGRect = .zero
@@ -189,68 +187,124 @@ struct KeyboardView: View {
 
     // MARK: - Emoji page
 
-    private var emojiPage: some View {
-        VStack(spacing: 0) {
-            // Header — same height as suggestion bar to keep total keyboard height stable
-            Text("Эмодзи")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(Color(UIColor.secondaryLabel))
-                .frame(maxWidth: .infinity, alignment: .center)
-                .frame(height: 36)
+    private let emojiRecentsID = -1
 
-            // Scrollable emoji grid
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 4) {
-                    ForEach(KeyboardModel.emojiSections, id: \.title) { section in
-                        Text(section.title)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Color(UIColor.secondaryLabel))
-                            .padding(.horizontal, 8)
-                            .padding(.top, 4)
-                        LazyVGrid(
-                            columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 8),
-                            spacing: 2
-                        ) {
-                            ForEach(section.emoji, id: \.self) { emoji in
-                                Text(emoji)
-                                    .font(.system(size: 26))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 40)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { onEmojiInsert?(emoji) }
-                            }
+    private var emojiPage: some View {
+        ScrollViewReader { scrollProxy in
+            VStack(spacing: 0) {
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        if !model.recentEmojis.isEmpty {
+                            emojiSection(id: emojiRecentsID, title: "Эхиримжибур",
+                                         emojis: model.recentEmojis)
                         }
-                        .padding(.horizontal, 4)
+                        ForEach(Array(EmojiData.categories.enumerated()), id: \.offset) { i, cat in
+                            emojiSection(id: i, title: cat.title, emojis: cat.emojis)
+                        }
                     }
                 }
-            }
-            .frame(maxHeight: .infinity)
+                .coordinateSpace(name: "emojiScroll")
+                .onPreferenceChange(EmojiSectionYPreference.self) { positions in
+                    // Current category = section whose header is nearest above the top edge.
+                    // No candidate means we are deep inside a section — keep the last value.
+                    if let current = positions.filter({ $0.value <= 50 })
+                        .max(by: { $0.value < $1.value })?.key {
+                        emojiCurrentSection = current
+                    }
+                }
 
-            // Bottom bar: ABC + backspace
-            HStack(spacing: 6) {
-                Button(action: { onKey(.letters) }) {
-                    Text("АБВ")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(Color(UIColor.label))
+                emojiCategoryBar(scrollProxy: scrollProxy)
+            }
+        }
+    }
+
+    private func emojiSection(id: Int, title: String, emojis: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(Color(UIColor.secondaryLabel))
+                .padding(.horizontal, 10)
+                .padding(.top, 8)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: EmojiSectionYPreference.self,
+                            value: [id: geo.frame(in: .named("emojiScroll")).minY]
+                        )
+                    }
+                )
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 8),
+                spacing: 4
+            ) {
+                ForEach(emojis, id: \.self) { emoji in
+                    Text(emoji)
+                        .font(.system(size: 30))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 43)
-                        .background(Color.kbFuncKey)
-                        .cornerRadius(8)
-                        .shadow(color: .black.opacity(0.3), radius: 0, x: 0, y: 1)
-                }
-                Button(action: { onKey(.backspace) }) {
-                    Image(systemName: "delete.backward")
-                        .font(.system(size: 18))
-                        .foregroundColor(Color(UIColor.label))
-                        .frame(width: 80)
-                        .frame(height: 43)
-                        .background(Color.kbFuncKey)
-                        .cornerRadius(8)
-                        .shadow(color: .black.opacity(0.3), radius: 0, x: 0, y: 1)
+                        .frame(height: 40)
+                        .contentShape(Rectangle())
+                        .onTapGesture { onEmojiInsert?(emoji) }
                 }
             }
-            .padding(.horizontal, 6)
-            .padding(.bottom, 4)
+            .padding(.horizontal, 4)
+        }
+        .id(id)
+    }
+
+    // Bottom strip like native: АБВ + category icons + delete, no key backgrounds
+    private func emojiCategoryBar(scrollProxy: ScrollViewProxy) -> some View {
+        HStack(spacing: 0) {
+            Button(action: { onKey(.letters) }) {
+                Text("АБВ")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Color(UIColor.label))
+                    .frame(width: 44, height: 36)
+                    .contentShape(Rectangle())
+            }
+
+            if !model.recentEmojis.isEmpty {
+                emojiCategoryIcon(id: emojiRecentsID, symbol: "clock", scrollProxy: scrollProxy)
+            }
+            ForEach(Array(EmojiData.categories.enumerated()), id: \.offset) { i, cat in
+                emojiCategoryIcon(id: i, symbol: cat.icon, scrollProxy: scrollProxy)
+            }
+
+            Button(action: { onKey(.backspace) }) {
+                Image(systemName: "delete.backward")
+                    .font(.system(size: 17))
+                    .foregroundColor(Color(UIColor.label))
+                    .frame(width: 44, height: 36)
+                    .contentShape(Rectangle())
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.bottom, 4)
+    }
+
+    private func emojiCategoryIcon(id: Int, symbol: String, scrollProxy: ScrollViewProxy) -> some View {
+        Button(action: {
+            emojiCurrentSection = id
+            scrollProxy.scrollTo(id, anchor: .top)
+        }) {
+            Image(systemName: symbol)
+                .font(.system(size: 15))
+                .foregroundColor(Color(emojiCurrentSection == id ? UIColor.label : UIColor.secondaryLabel))
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(
+                    Circle()
+                        .fill(emojiCurrentSection == id
+                              ? Color(UIColor.secondarySystemFill) : Color.clear)
+                        .frame(width: 30, height: 30)
+                )
+                .contentShape(Rectangle())
+        }
+    }
+
+    private struct EmojiSectionYPreference: PreferenceKey {
+        static var defaultValue: [Int: CGFloat] = [:]
+        static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
+            value.merge(nextValue()) { $1 }
         }
     }
 

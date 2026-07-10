@@ -85,44 +85,22 @@ final class KeyboardModel: ObservableObject {
 
     // MARK: - Emoji
 
-    func insertEmoji(_ emoji: String, proxy: UITextDocumentProxy) {
-        proxy.insertText(emoji)
-    }
+    @Published var recentEmojis: [String] =
+        UserDefaults.standard.stringArray(forKey: KeyboardModel.recentEmojisKey) ?? []
 
-    static let emojiSections: [(title: String, emoji: [String])] = [
-        ("Чинар", [
-            "😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃",
-            "😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙",
-            "😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔",
-            "😐","😑","😶","😏","😒","🙄","😬","🤥","😔","😪",
-            "🤤","😴","😷","🤒","🤕","🥴","😵","🤯","🥳","😎",
-            "😭","😢","😤","😠","😡","🤬","💀","💩","🤡","👻",
-        ]),
-        ("Инсанар", [
-            "👋","🤚","✋","🖐","👌","🤌","🤏","✌️","🤞","🤟",
-            "🤘","👍","👎","✊","👊","🤛","🤜","👏","🙌","🫶",
-            "🤝","🙏","💪","🦾","👀","👁","👄","💋","🫀","🧠",
-            "👶","👧","🧒","👦","👩","🧑","👨","👴","👵","🧓",
-            "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔",
-        ]),
-        ("Тӏебиат", [
-            "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯",
-            "🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐔","🐧",
-            "🌸","🌺","🌻","🌹","🍀","🌿","🌲","🌳","🌴","🌵",
-            "🌊","🔥","⭐️","🌙","☀️","❄️","🌈","⛅️","🌧","⚡️",
-        ]),
-        ("Тӏуьн", [
-            "🍎","🍊","🍋","🍇","🍓","🍑","🍒","🍍","🥭","🍌",
-            "🍕","🍔","🍟","🌮","🌯","🥗","🍜","🍣","🍱","🥡",
-            "☕️","🍵","🧃","🥤","🍺","🍷","🥂","🍾","🧁","🎂",
-        ]),
-        ("Символар", [
-            "✅","❌","❓","❗️","💯","🔥","⚡️","💡","🔑","🔒",
-            "📱","💻","🖥","⌨️","🖨","📷","🎵","🎶","🎉","🎊",
-            "🏆","🥇","🎯","🎲","🎮","♟","🎭","🎨","🎬","📚",
-            "💰","💳","💎","🚀","✈️","🚗","🏠","🌍","🗺","🧭",
-        ]),
-    ]
+    private static let recentEmojisKey = "recentEmojis"
+    private static let recentEmojisLimit = 24
+
+    func recordRecentEmoji(_ emoji: String) {
+        var recents = recentEmojis
+        recents.removeAll { $0 == emoji }
+        recents.insert(emoji, at: 0)
+        if recents.count > Self.recentEmojisLimit {
+            recents.removeLast(recents.count - Self.recentEmojisLimit)
+        }
+        recentEmojis = recents
+        UserDefaults.standard.set(recents, forKey: Self.recentEmojisKey)
+    }
 
     // MARK: - Layout
 
