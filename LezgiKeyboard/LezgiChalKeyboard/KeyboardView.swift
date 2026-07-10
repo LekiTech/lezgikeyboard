@@ -339,9 +339,12 @@ private struct RowView: View {
         .frame(height: keyHeight)  // keep layout height at 43pt so VStack spacing is unchanged
     }
 
-    // Find key whose visual midX is closest to touchX
+    // Touch inside a key's visual frame → that key wins; gaps fall back to nearest midX.
     private func nearest(touchX: CGFloat) -> (cap: KeyCap, frame: CGRect)? {
-        keyFrames.min(by: { abs($0.frame.midX - touchX) < abs($1.frame.midX - touchX) })
+        if let hit = keyFrames.first(where: { $0.frame.minX <= touchX && touchX <= $0.frame.maxX }) {
+            return hit
+        }
+        return keyFrames.min(by: { abs($0.frame.midX - touchX) < abs($1.frame.midX - touchX) })
     }
 
     private func handleChanged(value: DragGesture.Value) {
