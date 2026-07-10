@@ -13,36 +13,32 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 32) {
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Лезгинская Клавиатура")
+                    Text("Lezgi Keyboard")
                         .font(.largeTitle.weight(.bold))
-                    Text("Клавиатура для лезгинского языка на iOS")
+                    Text("Keyboard for the Lezgian language on iOS")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Как установить")
+                    Text("How to install")
                         .font(.headline)
 
-                    StepRow(number: "1", text: "Откройте **Настройки** → **Основные** → **Клавиатура**")
-                    StepRow(number: "2", text: "Нажмите **Клавиатуры** → **Добавить новую клавиатуру**")
-                    StepRow(number: "3", text: "Выберите **Лезгинская Клавиатура** в списке")
-                    StepRow(number: "4", text: "Чтобы переключаться между языками — нажимайте кнопку 🌐 на клавиатуре")
+                    StepRow(number: "1", text: "Open **Settings** → **General** → **Keyboard**")
+                    StepRow(number: "2", text: "Tap **Keyboards** → **Add New Keyboard**")
+                    StepRow(number: "3", text: "Select **Lezgi Keyboard** from the list")
+                    StepRow(number: "4", text: "Switch languages using the 🌐 key on the keyboard")
                 }
 
                 Divider()
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("О клавиатуре")
+                    Text("About the keyboard")
                         .font(.headline)
 
-                    Text("""
-                    Клавиатура поддерживает лезгинский алфавит на кириллической основе. \
-                    Особые буквы (цI, уь, кI, кь, къ и др.) доступны через долгое нажатие. \
-                    Буква ъ вынесена на основную раскладку — она часто используется в лезгинском языке.
-                    """)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    Text("The keyboard supports the Lezgian Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgian.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer(minLength: 24)
