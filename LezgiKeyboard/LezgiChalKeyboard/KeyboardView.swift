@@ -57,6 +57,7 @@ struct KeyboardView: View {
 
     // Emoji page state
     @State private var emojiCurrentSection: Int = 0
+    @State private var emojiScrollTarget: Int? = nil
 
     // Callout state
     @State private var calloutFrame: CGRect = .zero
@@ -189,76 +190,97 @@ struct KeyboardView: View {
 
     private let emojiRecentsID = -1
 
-    private var emojiPage: some View {
-        ScrollViewReader { scrollProxy in
-            VStack(spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 0) {
-                        if !model.recentEmojis.isEmpty {
-                            emojiSection(id: emojiRecentsID, title: "Эхиримжибур",
-                                         emojis: model.recentEmojis)
-                        }
-                        ForEach(Array(EmojiData.categories.enumerated()), id: \.offset) { i, cat in
-                            emojiSection(id: i, title: cat.title, emojis: cat.emojis)
-                        }
-                    }
-                    // Transparent areas don't receive touches in SwiftUI; near-zero
-                    // opacity makes the whole grid area scrollable, not just the glyphs
-                    .background(Color.white.opacity(0.001))
-                }
-                .coordinateSpace(name: "emojiScroll")
-                .onPreferenceChange(EmojiSectionXPreference.self) { positions in
-                    // Current category = section whose leading edge is nearest left of
-                    // the viewport edge. No candidate means we are deep inside a
-                    // section — keep the last value.
-                    if let current = positions.filter({ $0.value <= 50 })
-                        .max(by: { $0.value < $1.value })?.key {
-                        emojiCurrentSection = current
-                    }
-                }
-
-                emojiCategoryBar(scrollProxy: scrollProxy)
-            }
-        }
+    // Flat list of small 5-emoji columns. Nested lazy containers (grid inside
+    // stack) defeat laziness — every cell gets created for layout and the
+    // keyboard extension hits its memory limit on device. Small uniform
+    // children keep the LazyHStack truly lazy and scroll jumps precise.
+    private struct EmojiColumn: Identifiable {
+        let id: Int
+        let category: Int      // emojiRecentsID or index into EmojiData.categories
+        let endsCategory: Bool
+        let emojis: [String]
     }
 
-    private func emojiSection(id: Int, title: String, emojis: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
+    private func makeEmojiColumns() -> [EmojiColumn] {
+        var groups: [(category: Int, emojis: [String])] = []
+        if !model.recentEmojis.isEmpty { groups.append((emojiRecentsID, model.recentEmojis)) }
+        for (i, cat) in EmojiData.categories.enumerated() { groups.append((i, cat.emojis)) }
+
+        var columns: [EmojiColumn] = []
+        for group in groups {
+            let chunks = stride(from: 0, to: group.emojis.count, by: 5).map {
+                Array(group.emojis[$0..<min($0 + 5, group.emojis.count)])
+            }
+            for (ci, chunk) in chunks.enumerated() {
+                columns.append(EmojiColumn(id: columns.count,
+                                           category: group.category,
+                                           endsCategory: ci == chunks.count - 1,
+                                           emojis: chunk))
+            }
+        }
+        return columns
+    }
+
+    private func emojiSectionTitle(for category: Int) -> String {
+        category == emojiRecentsID ? "Эхиримжибур" : EmojiData.categories[category].title
+    }
+
+    private var emojiPage: some View {
+        let columns = makeEmojiColumns()
+        return VStack(alignment: .leading, spacing: 0) {
+            // Fixed title strip showing the current category, like native
+            Text(emojiSectionTitle(for: emojiCurrentSection))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(UIColor.secondaryLabel))
                 .padding(.leading, 10)
                 .padding(.top, 8)
-                .background(
-                    GeometryReader { geo in
-                        Color.clear.preference(
-                            key: EmojiSectionXPreference.self,
-                            value: [id: geo.frame(in: .named("emojiScroll")).minX]
-                        )
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 2) {
+                    ForEach(columns) { column in
+                        emojiColumn(column)
                     }
-                )
-            // Columns fill top-to-bottom, then flow rightwards like the native keyboard
-            LazyHGrid(
-                rows: Array(repeating: GridItem(.fixed(33), spacing: 2), count: 5),
-                spacing: 2
-            ) {
-                ForEach(emojis, id: \.self) { emoji in
-                    Text(emoji)
-                        .font(.system(size: 26))
-                        .frame(width: 38)
-                        .frame(maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                        .onTapGesture { onEmojiInsert?(emoji) }
+                }
+                .scrollTargetLayout()
+                .padding(.horizontal, 6)
+                // Transparent areas don't receive touches in SwiftUI; near-zero
+                // opacity makes the whole grid area scrollable, not just the glyphs
+                .background(Color.white.opacity(0.001))
+            }
+            .scrollPosition(id: $emojiScrollTarget, anchor: .leading)
+            .padding(.top, 4)
+            .onChange(of: emojiScrollTarget) { _, newValue in
+                if let id = newValue, columns.indices.contains(id) {
+                    emojiCurrentSection = columns[id].category
                 }
             }
-            .padding(.horizontal, 6)
+            .onAppear {
+                emojiCurrentSection = model.recentEmojis.isEmpty ? 0 : emojiRecentsID
+            }
+
+            Spacer(minLength: 0)
+
+            emojiCategoryBar
         }
-        .id(id)
+    }
+
+    private func emojiColumn(_ column: EmojiColumn) -> some View {
+        VStack(spacing: 2) {
+            ForEach(column.emojis, id: \.self) { emoji in
+                Text(emoji)
+                    .font(.system(size: 26))
+                    .frame(width: 38, height: 33)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onEmojiInsert?(emoji) }
+            }
+        }
+        // Visual gap between categories
+        .padding(.trailing, column.endsCategory ? 10 : 0)
     }
 
     // Bottom strip like native: АБВ + category icons + delete, no key backgrounds.
     // Visual layer + full-width gesture layer dispatching by x, same as RowView.
-    private func emojiCategoryBar(scrollProxy: ScrollViewProxy) -> some View {
+    private var emojiCategoryBar: some View {
         ZStack {
             // Visual layer, no gestures
             HStack(spacing: 0) {
@@ -288,8 +310,7 @@ struct KeyboardView: View {
                         DragGesture(minimumDistance: 0)
                             .onEnded { value in
                                 emojiBarTapped(x: value.location.x,
-                                               width: geo.size.width,
-                                               scrollProxy: scrollProxy)
+                                               width: geo.size.width)
                             }
                     )
             }
@@ -312,7 +333,7 @@ struct KeyboardView: View {
             )
     }
 
-    private func emojiBarTapped(x: CGFloat, width: CGFloat, scrollProxy: ScrollViewProxy) {
+    private func emojiBarTapped(x: CGFloat, width: CGFloat) {
         let side: CGFloat = 48   // 4pt edge padding + 44pt АБВ/delete button
         if x < side { onKey(.letters); return }
         if x > width - side { onKey(.backspace); return }
@@ -324,15 +345,18 @@ struct KeyboardView: View {
         let idx = max(0, min(ids.count - 1, Int((x - side) / iconWidth)))
         let id = ids[idx]
         emojiCurrentSection = id
-        scrollProxy.scrollTo(id, anchor: .leading)
-    }
-
-    private struct EmojiSectionXPreference: PreferenceKey {
-        static var defaultValue: [Int: CGFloat] = [:]
-        static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
-            value.merge(nextValue()) { $1 }
+        guard let target = makeEmojiColumns().first(where: { $0.category == id })?.id else { return }
+        if emojiScrollTarget == target {
+            // Binding already holds this id (scrollPosition writes back while the
+            // user scrolls) — retrigger so tapping the current category jumps to
+            // its start instead of doing nothing
+            emojiScrollTarget = nil
+            DispatchQueue.main.async { emojiScrollTarget = target }
+        } else {
+            emojiScrollTarget = target
         }
     }
+
 
     // MARK: - Key row
 
