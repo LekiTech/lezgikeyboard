@@ -202,6 +202,9 @@ struct KeyboardView: View {
                             emojiSection(id: i, title: cat.title, emojis: cat.emojis)
                         }
                     }
+                    // Transparent areas don't receive touches in SwiftUI; near-zero
+                    // opacity makes the whole grid area scrollable, not just the glyphs
+                    .background(Color.white.opacity(0.001))
                 }
                 .coordinateSpace(name: "emojiScroll")
                 .onPreferenceChange(EmojiSectionYPreference.self) { positions in
@@ -251,54 +254,75 @@ struct KeyboardView: View {
         .id(id)
     }
 
-    // Bottom strip like native: АБВ + category icons + delete, no key backgrounds
+    // Bottom strip like native: АБВ + category icons + delete, no key backgrounds.
+    // Visual layer + full-width gesture layer dispatching by x, same as RowView.
     private func emojiCategoryBar(scrollProxy: ScrollViewProxy) -> some View {
-        HStack(spacing: 0) {
-            Button(action: { onKey(.letters) }) {
+        ZStack {
+            // Visual layer, no gestures
+            HStack(spacing: 0) {
                 Text("АБВ")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(Color(UIColor.label))
                     .frame(width: 44, height: 36)
-                    .contentShape(Rectangle())
-            }
 
-            if !model.recentEmojis.isEmpty {
-                emojiCategoryIcon(id: emojiRecentsID, symbol: "clock", scrollProxy: scrollProxy)
-            }
-            ForEach(Array(EmojiData.categories.enumerated()), id: \.offset) { i, cat in
-                emojiCategoryIcon(id: i, symbol: cat.icon, scrollProxy: scrollProxy)
-            }
+                if !model.recentEmojis.isEmpty {
+                    emojiCategoryIcon(id: emojiRecentsID, symbol: "clock")
+                }
+                ForEach(Array(EmojiData.categories.enumerated()), id: \.offset) { i, cat in
+                    emojiCategoryIcon(id: i, symbol: cat.icon)
+                }
 
-            Button(action: { onKey(.backspace) }) {
                 Image(systemName: "delete.backward")
                     .font(.system(size: 17))
                     .foregroundColor(Color(UIColor.label))
                     .frame(width: 44, height: 36)
-                    .contentShape(Rectangle())
+            }
+            .padding(.horizontal, 4)
+
+            // Gesture layer: covers the bar edge to edge, including gaps around icons
+            GeometryReader { geo in
+                Color.white.opacity(0.001)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onEnded { value in
+                                emojiBarTapped(x: value.location.x,
+                                               width: geo.size.width,
+                                               scrollProxy: scrollProxy)
+                            }
+                    )
             }
         }
-        .padding(.horizontal, 4)
+        .frame(height: 36)
         .padding(.bottom, 4)
     }
 
-    private func emojiCategoryIcon(id: Int, symbol: String, scrollProxy: ScrollViewProxy) -> some View {
-        Button(action: {
-            emojiCurrentSection = id
-            scrollProxy.scrollTo(id, anchor: .top)
-        }) {
-            Image(systemName: symbol)
-                .font(.system(size: 15))
-                .foregroundColor(Color(emojiCurrentSection == id ? UIColor.label : UIColor.secondaryLabel))
-                .frame(maxWidth: .infinity)
-                .frame(height: 36)
-                .background(
-                    Circle()
-                        .fill(emojiCurrentSection == id
-                              ? Color(UIColor.secondarySystemFill) : Color.clear)
-                        .frame(width: 30, height: 30)
-                )
-                .contentShape(Rectangle())
-        }
+    private func emojiCategoryIcon(id: Int, symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 15))
+            .foregroundColor(Color(emojiCurrentSection == id ? UIColor.label : UIColor.secondaryLabel))
+            .frame(maxWidth: .infinity)
+            .frame(height: 36)
+            .background(
+                Circle()
+                    .fill(emojiCurrentSection == id
+                          ? Color(UIColor.secondarySystemFill) : Color.clear)
+                    .frame(width: 30, height: 30)
+            )
+    }
+
+    private func emojiBarTapped(x: CGFloat, width: CGFloat, scrollProxy: ScrollViewProxy) {
+        let side: CGFloat = 48   // 4pt edge padding + 44pt АБВ/delete button
+        if x < side { onKey(.letters); return }
+        if x > width - side { onKey(.backspace); return }
+
+        var ids = Array(EmojiData.categories.indices)
+        if !model.recentEmojis.isEmpty { ids.insert(emojiRecentsID, at: 0) }
+        let iconWidth = (width - side * 2) / CGFloat(ids.count)
+        guard iconWidth > 0 else { return }
+        let idx = max(0, min(ids.count - 1, Int((x - side) / iconWidth)))
+        let id = ids[idx]
+        emojiCurrentSection = id
+        scrollProxy.scrollTo(id, anchor: .top)
     }
 
     private struct EmojiSectionYPreference: PreferenceKey {
