@@ -173,6 +173,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				ru,
 				Base,
 			);
 			mainGroup = E27822BD2FF1F09E00255D0E;
@@ -429,7 +430,7 @@
 				DEVELOPMENT_TEAM = RC94H8KQYA;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LezgiChalKeyboard/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LezgiChalKeyboard;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lezgi Keyboard";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -460,7 +461,7 @@
 				DEVELOPMENT_TEAM = RC94H8KQYA;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LezgiChalKeyboard/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LezgiChalKeyboard;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lezgi Keyboard";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
