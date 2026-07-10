@@ -15,6 +15,11 @@ private extension Color {
             ? UIColor(red: 0.227, green: 0.227, blue: 0.235, alpha: 1)
             : UIColor.white
     }))
+    static let kbLetterKeyPressed = Color(UIColor(dynamicProvider: { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(red: 0.36, green: 0.36, blue: 0.37, alpha: 1)
+            : UIColor(red: 0.82, green: 0.84, blue: 0.87, alpha: 1)
+    }))
     static let kbFuncKey = Color(UIColor(dynamicProvider: { t in
         t.userInterfaceStyle == .dark
             ? UIColor(red: 0.110, green: 0.110, blue: 0.118, alpha: 1)
@@ -347,7 +352,8 @@ private struct RowView: View {
             // Visual layer
             HStack(spacing: spacing) {
                 ForEach(Array(row.enumerated()), id: \.offset) { _, cap in
-                    KeyButton(cap: cap, model: model, returnKeyType: model.returnKeyType)
+                    KeyButton(cap: cap, model: model, returnKeyType: model.returnKeyType,
+                              isPressed: activeCap == cap)
                         .frame(width: unitWidth * LezgiLayout.weight(cap), height: keyHeight)
                 }
             }
@@ -458,9 +464,11 @@ private struct CalloutBubble: View {
             max(keyFrame.midX, totalWidth / 2 + 6),
             UIScreen.main.bounds.width - totalWidth / 2 - 6
         )
-        let tailHeight: CGFloat = 8
-        let desiredY = keyFrame.minY - bubbleHeight / 2 - tailHeight - 4
-        let bubbleY = max(desiredY, bubbleHeight / 2)
+        let tailHeight: CGFloat = 16
+        let totalHeight = bubbleHeight + tailHeight
+        // Neck extends 9pt into the key to cover its rounded top corners
+        let desiredY = keyFrame.minY + 9 - totalHeight / 2
+        let bubbleY = max(desiredY, totalHeight / 2)
 
         return VStack(spacing: 0) {
             HStack(spacing: 0) {
@@ -472,16 +480,21 @@ private struct CalloutBubble: View {
                         .font(.system(size: 24))
                         .foregroundColor(i == selectedIndex ? .white : Color(UIColor.label))
                         .frame(width: optionWidth, height: bubbleHeight)
-                        .background(i == selectedIndex ? Color.blue : Color.kbLetterKey)
+                        .background(i == selectedIndex ? Color.blue : Color.kbLetterKeyPressed)
                 }
             }
             .cornerRadius(10)
-            .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
 
-            Triangle()
-                .fill(Color.kbLetterKey)
-                .frame(width: 14, height: tailHeight)
+            // Key-width neck centered under the pressed key, not under the bubble center
+            Rectangle()
+                .fill(Color.kbLetterKeyPressed)
+                .frame(width: keyFrame.width, height: tailHeight)
+                .offset(x: keyFrame.midX - bubbleX)
         }
+        // Flatten bubble + neck into one layer so the shadow wraps the combined
+        // silhouette instead of drawing a seam where the neck meets the bubble
+        .compositingGroup()
+        .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
         .position(x: bubbleX, y: bubbleY)
     }
 }
@@ -492,33 +505,74 @@ private struct KeyPreviewBubble: View {
     let label: String
     let frame: CGRect
 
+    private let bubbleHeight: CGFloat = 54
+    private let neckAboveKey: CGFloat = 11   // gap between bubble bottom and key top
+
     var body: some View {
-        VStack(spacing: 0) {
+        let width = max(frame.width, 44)
+        // Neck runs the full key height so the shape replaces the key entirely;
+        // capped at frame.maxY so top-row popups stay inside the keyboard view
+        let totalHeight = min(bubbleHeight + neckAboveKey + frame.height, frame.maxY)
+        ZStack(alignment: .top) {
+            KeyPreviewShape(neckWidth: frame.width,
+                            bubbleHeight: bubbleHeight,
+                            cornerRadius: 8)
+                .fill(Color.kbLetterKeyPressed)
+                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
             Text(label)
                 .font(.system(size: 28))
                 .foregroundColor(Color(UIColor.label))
-                .frame(width: max(frame.width, 44), height: 54)
-                .background(Color.kbLetterKey)
-                .cornerRadius(8)
-                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-
-            Triangle()
-                .fill(Color.kbLetterKey)
-                .frame(width: 14, height: 8)
+                .frame(width: width, height: bubbleHeight)
         }
+        .frame(width: width, height: totalHeight)
         .position(
             x: frame.midX,
-            y: max(frame.minY - 36, 31)
+            // Bottom edge aligns with the key bottom
+            y: frame.maxY - totalHeight / 2
         )
     }
 }
 
-private struct Triangle: Shape {
+// One continuous silhouette for the key preview: rounded bubble on top,
+// sides curving inward to a neck matching the pressed key width, flat bottom.
+private struct KeyPreviewShape: Shape {
+    let neckWidth: CGFloat
+    let bubbleHeight: CGFloat
+    let cornerRadius: CGFloat
+
     func path(in rect: CGRect) -> Path {
+        let inset = max((rect.width - neckWidth) / 2, 0)
+        let bubbleBottom = rect.minY + bubbleHeight
+        let curveStart = bubbleBottom - 6   // sides begin bending inward
+        let curveEnd   = bubbleBottom + 6   // neck sides become vertical
+
         var p = Path()
-        p.move(to: CGPoint(x: rect.midX, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        p.move(to: CGPoint(x: rect.minX + cornerRadius, y: rect.minY))
+        // top edge + top-right corner
+        p.addLine(to: CGPoint(x: rect.maxX - cornerRadius, y: rect.minY))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + cornerRadius),
+                       control: CGPoint(x: rect.maxX, y: rect.minY))
+        // right side down, then S-curve inward to neck
+        p.addLine(to: CGPoint(x: rect.maxX, y: curveStart))
+        p.addCurve(to: CGPoint(x: rect.maxX - inset, y: curveEnd),
+                   control1: CGPoint(x: rect.maxX, y: bubbleBottom),
+                   control2: CGPoint(x: rect.maxX - inset, y: bubbleBottom))
+        // neck right side, rounded bottom corners (key-like), neck left side
+        p.addLine(to: CGPoint(x: rect.maxX - inset, y: rect.maxY - cornerRadius))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX - inset - cornerRadius, y: rect.maxY),
+                       control: CGPoint(x: rect.maxX - inset, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX + inset + cornerRadius, y: rect.maxY))
+        p.addQuadCurve(to: CGPoint(x: rect.minX + inset, y: rect.maxY - cornerRadius),
+                       control: CGPoint(x: rect.minX + inset, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX + inset, y: curveEnd))
+        // S-curve outward back to bubble, left side up
+        p.addCurve(to: CGPoint(x: rect.minX, y: curveStart),
+                   control1: CGPoint(x: rect.minX + inset, y: bubbleBottom),
+                   control2: CGPoint(x: rect.minX, y: bubbleBottom))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cornerRadius))
+        // top-left corner
+        p.addQuadCurve(to: CGPoint(x: rect.minX + cornerRadius, y: rect.minY),
+                       control: CGPoint(x: rect.minX, y: rect.minY))
         p.closeSubpath()
         return p
     }
@@ -531,14 +585,23 @@ private struct KeyButton: View {
     let cap: KeyCap
     @ObservedObject var model: KeyboardModel
     let returnKeyType: UIReturnKeyType
+    var isPressed: Bool = false
 
     var body: some View {
         keyLabel
+            // While a character key is pressed its bubble shows the letter,
+            // so the key's own label is hidden like on the native keyboard
+            .opacity(hidesLabel ? 0 : 1)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(backgroundColor)
             .cornerRadius(8)
             .shadow(color: .black.opacity(0.3), radius: 0, x: 0, y: 1)
             .allowsHitTesting(false)
+    }
+
+    private var hidesLabel: Bool {
+        if case .character = cap { return isPressed }
+        return false
     }
 
     @ViewBuilder
@@ -590,6 +653,6 @@ private struct KeyButton: View {
     }
 
     private var backgroundColor: Color {
-        .kbLetterKey
+        isPressed ? .kbLetterKeyPressed : .kbLetterKey
     }
 }
