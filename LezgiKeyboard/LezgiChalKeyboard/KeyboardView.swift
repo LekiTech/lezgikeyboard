@@ -192,8 +192,8 @@ struct KeyboardView: View {
     private var emojiPage: some View {
         ScrollViewReader { scrollProxy in
             VStack(spacing: 0) {
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(alignment: .leading, spacing: 0) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 0) {
                         if !model.recentEmojis.isEmpty {
                             emojiSection(id: emojiRecentsID, title: "Эхиримжибур",
                                          emojis: model.recentEmojis)
@@ -207,9 +207,10 @@ struct KeyboardView: View {
                     .background(Color.white.opacity(0.001))
                 }
                 .coordinateSpace(name: "emojiScroll")
-                .onPreferenceChange(EmojiSectionYPreference.self) { positions in
-                    // Current category = section whose header is nearest above the top edge.
-                    // No candidate means we are deep inside a section — keep the last value.
+                .onPreferenceChange(EmojiSectionXPreference.self) { positions in
+                    // Current category = section whose leading edge is nearest left of
+                    // the viewport edge. No candidate means we are deep inside a
+                    // section — keep the last value.
                     if let current = positions.filter({ $0.value <= 50 })
                         .max(by: { $0.value < $1.value })?.key {
                         emojiCurrentSection = current
@@ -226,30 +227,31 @@ struct KeyboardView: View {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(UIColor.secondaryLabel))
-                .padding(.horizontal, 10)
+                .padding(.leading, 10)
                 .padding(.top, 8)
                 .background(
                     GeometryReader { geo in
                         Color.clear.preference(
-                            key: EmojiSectionYPreference.self,
-                            value: [id: geo.frame(in: .named("emojiScroll")).minY]
+                            key: EmojiSectionXPreference.self,
+                            value: [id: geo.frame(in: .named("emojiScroll")).minX]
                         )
                     }
                 )
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 8),
-                spacing: 4
+            // Columns fill top-to-bottom, then flow rightwards like the native keyboard
+            LazyHGrid(
+                rows: Array(repeating: GridItem(.fixed(33), spacing: 2), count: 5),
+                spacing: 2
             ) {
                 ForEach(emojis, id: \.self) { emoji in
                     Text(emoji)
-                        .font(.system(size: 30))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
+                        .font(.system(size: 26))
+                        .frame(width: 38)
+                        .frame(maxHeight: .infinity)
                         .contentShape(Rectangle())
                         .onTapGesture { onEmojiInsert?(emoji) }
                 }
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 6)
         }
         .id(id)
     }
@@ -322,10 +324,10 @@ struct KeyboardView: View {
         let idx = max(0, min(ids.count - 1, Int((x - side) / iconWidth)))
         let id = ids[idx]
         emojiCurrentSection = id
-        scrollProxy.scrollTo(id, anchor: .top)
+        scrollProxy.scrollTo(id, anchor: .leading)
     }
 
-    private struct EmojiSectionYPreference: PreferenceKey {
+    private struct EmojiSectionXPreference: PreferenceKey {
         static var defaultValue: [Int: CGFloat] = [:]
         static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
             value.merge(nextValue()) { $1 }
