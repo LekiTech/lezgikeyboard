@@ -45,11 +45,17 @@ The palochka (vertical bar) is typed as Latin **I** (U+0049), which matches the 
 - [x] **Step 1** — Key grid, character input, shift, backspace, numbers/symbols pages, globe key
 - [x] **Step 2** — Caps Lock (double-tap shift), auto-capitalize, key preview bubble
 - [x] **Step 3** — Long-press callout menus with swipe selection
-- [ ] **Step 4** — Emoji page
+- [x] **Step 4** — Emoji page (custom emoji page with categories, ABC/АБВ returns to letters, emoji inserts directly)
 - [x] **Step 5** — Word suggestions from `lezgi_words.sqlite`
 - [ ] **Step 6** — Sound/haptic feedback (Full Access), landscape layout, iPad layout
+- [x] **Row-level hit zones** — gaps between keys (horizontal and vertical) register on the nearest key, matching native iOS keyboard behavior
+- [x] **Long-press callout bubbles** — not clipped; base letter included as first option in callout
+- [x] **Auto-capitalization after period** — typing `.` on numbers/symbols page returns to letters layout with shift enabled for the next letter; respects Caps Lock
+- [x] **Auto-capitalization on empty field** — deleting all text re-enables uppercase; respects Caps Lock
+- [x] **Display name and localization** — app icon and keyboard extension show "Lezgi Keyboard" (en) / "Лезги Кхьин" (ru); main app instruction screen is localized in English and Russian
+- [ ] **Suggestion bar hit areas** — tapping should work on the full suggestion cell, not only directly on the text
 - [ ] **Spacebar cursor control** — long-press and drag on spacebar moves the insertion point through text, matching native iOS keyboard behavior
-- [x] **TODO** — Improve key hit areas so gaps between keys still register nearest key, like native iOS keyboard (visual size unchanged, only touch target expanded)
+- [ ] **Emoji page redesign** — current page is MVP; investigate native iOS emoji keyboard access from a custom extension; if not possible, redesign to match native emoji keyboard (categories, recent emojis, scrolling, sizing, bottom controls)
 
 ## Web Prototype
 
