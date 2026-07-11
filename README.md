@@ -50,6 +50,7 @@ The palochka (vertical bar) is inserted as Cyrillic Palochka **ӏ** (U+04CF); th
 - [x] **Step 4** — Emoji page (custom emoji page with categories, ABC/АБВ returns to letters, emoji inserts directly)
 - [x] **Step 5** — Word suggestions from `lezgi_words.sqlite`
 - [ ] **Step 6** — Sound/haptic feedback (Full Access), landscape layout, iPad layout
+- [ ] **iMessage sticker pack** — separate extension target with the Lezgi flag and national symbols; a real emoji flag is impossible (no Unicode code point), stickers are the honest alternative for Messages
 - [x] **Row-level hit zones** — gaps between keys (horizontal and vertical) register on the nearest key, matching native iOS keyboard behavior
 - [x] **Long-press callout bubbles** — not clipped; base letter included as first option in callout
 - [x] **Auto-capitalization after period** — typing `.` on numbers/symbols page returns to letters layout with shift enabled for the next letter; respects Caps Lock
