@@ -46,9 +46,14 @@ final class KeyboardModel: ObservableObject {
             let text = isShifted ? LezgiLayout.applyCase(s, capsLock: isCapsLock) : s
             proxy.insertText(text)
             if shiftState == .once { shiftState = .off }
-            if s == "." && (page == .numbers || page == .symbols) {
+            // Punctuation on the numbers/symbols pages returns to the letters page,
+            // like the native keyboard; sentence-ending marks capitalize the next letter
+            if (page == .numbers || page == .symbols),
+               [".", ",", "?", "!", "'"].contains(s) {
                 page = .letters
-                if shiftState != .capsLock { shiftState = .once }
+                if [".", "?", "!"].contains(s), shiftState != .capsLock {
+                    shiftState = .once
+                }
             }
 
         case .space:

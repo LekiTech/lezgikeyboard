@@ -58,6 +58,15 @@ struct KeyboardView: View {
     // Emoji page state
     @State private var emojiCurrentSection: Int = 0
     @State private var emojiScrollTarget: Int? = nil
+    @State private var emojiBarIsPressed = false
+    @State private var emojiBarPressedZone: EmojiBarZone? = nil
+    @State private var emojiBarRepeatTimer: Timer? = nil
+
+    private enum EmojiBarZone: Equatable {
+        case letters
+        case backspace
+        case category(Int)
+    }
 
     // Callout state
     @State private var calloutFrame: CGRect = .zero
@@ -267,11 +276,13 @@ struct KeyboardView: View {
     private func emojiColumn(_ column: EmojiColumn) -> some View {
         VStack(spacing: 2) {
             ForEach(column.emojis, id: \.self) { emoji in
-                Text(emoji)
-                    .font(.system(size: 26))
-                    .frame(width: 38, height: 33)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onEmojiInsert?(emoji) }
+                Button(action: { onEmojiInsert?(emoji) }) {
+                    Text(emoji)
+                        .font(.system(size: 26))
+                        .frame(width: 38, height: 33)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(EmojiKeyButtonStyle())
             }
         }
         // Visual gap between categories
@@ -308,9 +319,12 @@ struct KeyboardView: View {
                 Color.white.opacity(0.001)
                     .gesture(
                         DragGesture(minimumDistance: 0)
-                            .onEnded { value in
-                                emojiBarTapped(x: value.location.x,
-                                               width: geo.size.width)
+                            .onChanged { value in
+                                emojiBarPressBegan(x: value.location.x,
+                                                   width: geo.size.width)
+                            }
+                            .onEnded { _ in
+                                emojiBarPressEnded()
                             }
                     )
             }
@@ -333,27 +347,65 @@ struct KeyboardView: View {
             )
     }
 
-    private func emojiBarTapped(x: CGFloat, width: CGFloat) {
+    private func emojiBarZone(x: CGFloat, width: CGFloat) -> EmojiBarZone? {
         let side: CGFloat = 48   // 4pt edge padding + 44pt АБВ/delete button
-        if x < side { onKey(.letters); return }
-        if x > width - side { onKey(.backspace); return }
+        if x < side { return .letters }
+        if x > width - side { return .backspace }
 
         var ids = Array(EmojiData.categories.indices)
         if !model.recentEmojis.isEmpty { ids.insert(emojiRecentsID, at: 0) }
         let iconWidth = (width - side * 2) / CGFloat(ids.count)
-        guard iconWidth > 0 else { return }
+        guard iconWidth > 0 else { return nil }
         let idx = max(0, min(ids.count - 1, Int((x - side) / iconWidth)))
-        let id = ids[idx]
-        emojiCurrentSection = id
-        guard let target = makeEmojiColumns().first(where: { $0.category == id })?.id else { return }
-        if emojiScrollTarget == target {
-            // Binding already holds this id (scrollPosition writes back while the
-            // user scrolls) — retrigger so tapping the current category jumps to
-            // its start instead of doing nothing
-            emojiScrollTarget = nil
-            DispatchQueue.main.async { emojiScrollTarget = target }
-        } else {
-            emojiScrollTarget = target
+        return .category(ids[idx])
+    }
+
+    private func emojiBarPressBegan(x: CGFloat, width: CGFloat) {
+        guard !emojiBarIsPressed else { return }
+        emojiBarIsPressed = true
+        let zone = emojiBarZone(x: x, width: width)
+        emojiBarPressedZone = zone
+
+        // Delete repeats while held, same as backspace on the letters page
+        if zone == .backspace {
+            func scheduleRepeat(interval: TimeInterval) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + interval) {
+                    guard emojiBarIsPressed else { return }
+                    onKey(.backspace)
+                    scheduleRepeat(interval: max(0.03, interval * 0.85))
+                }
+            }
+            emojiBarRepeatTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in
+                guard emojiBarIsPressed else { return }
+                scheduleRepeat(interval: 0.1)
+            }
+        }
+    }
+
+    private func emojiBarPressEnded() {
+        emojiBarRepeatTimer?.invalidate()
+        emojiBarRepeatTimer = nil
+        emojiBarIsPressed = false
+        guard let zone = emojiBarPressedZone else { return }
+        emojiBarPressedZone = nil
+
+        switch zone {
+        case .letters:
+            onKey(.letters)
+        case .backspace:
+            onKey(.backspace)
+        case .category(let id):
+            emojiCurrentSection = id
+            guard let target = makeEmojiColumns().first(where: { $0.category == id })?.id else { return }
+            if emojiScrollTarget == target {
+                // Binding already holds this id (scrollPosition writes back while the
+                // user scrolls) — retrigger so tapping the current category jumps to
+                // its start instead of doing nothing
+                emojiScrollTarget = nil
+                DispatchQueue.main.async { emojiScrollTarget = target }
+            } else {
+                emojiScrollTarget = target
+            }
         }
     }
 
@@ -398,6 +450,20 @@ struct KeyboardView: View {
                 calloutOptions = []
             }
         )
+    }
+}
+
+// MARK: - Emoji key press highlight
+
+// Rounded key-colored flash behind an emoji while touched, like native.
+// ButtonStyle gets isPressed for free and plays nice with the ScrollView.
+private struct EmojiKeyButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(configuration.isPressed ? Color.kbLetterKeyPressed : Color.clear)
+            )
     }
 }
 
