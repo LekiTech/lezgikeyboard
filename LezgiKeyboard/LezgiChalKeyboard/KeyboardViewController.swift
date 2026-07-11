@@ -11,7 +11,6 @@ import SwiftUI
 class KeyboardViewController: UIInputViewController {
 
     private var model = KeyboardModel()
-    private var hostingController: UIHostingController<KeyboardView>?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -32,8 +31,6 @@ class KeyboardViewController: UIInputViewController {
 
     private func setupKeyboard() {
         let hc = UIHostingController(rootView: makeKeyboardView())
-        hostingController = hc
-
         addChild(hc)
         view.addSubview(hc.view)
         hc.didMove(toParent: self)

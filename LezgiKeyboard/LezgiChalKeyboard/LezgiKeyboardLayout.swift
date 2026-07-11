@@ -59,7 +59,7 @@ enum LezgiLayout {
     ]
 
     // MARK: - Long-press callouts (Step 3)
-    // Alternates are inserted as a whole string (e.g. "цI" = ц + I).
+    // Alternates are inserted as a whole string (e.g. "цӏ" = ц + palochka U+04CF).
     static let callouts: [String: [String]] = [
         "ц": ["цӏ"],
         "у": ["уь"],
