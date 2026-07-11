@@ -15,7 +15,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Lezgi Keyboard")
                         .font(.largeTitle.weight(.bold))
-                    Text("Keyboard for the Lezgian language on iOS")
+                    Text("Keyboard for the Lezgi language on iOS")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -36,7 +36,7 @@ struct ContentView: View {
                     Text("About the keyboard")
                         .font(.headline)
 
-                    Text("The keyboard supports the Lezgian Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgian.")
+                    Text("The keyboard supports the Lezgi Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgi.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }

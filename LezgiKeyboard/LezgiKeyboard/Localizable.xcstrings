@@ -7,9 +7,9 @@
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лезги Кхьин" } }
       }
     },
-    "Keyboard for the Lezgian language on iOS" : {
+    "Keyboard for the Lezgi language on iOS" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keyboard for the Lezgian language on iOS" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keyboard for the Lezgi language on iOS" } },
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Клавиатура для лезгинского языка на iOS" } }
       }
     },
@@ -49,9 +49,9 @@
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "О клавиатуре" } }
       }
     },
-    "The keyboard supports the Lezgian Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgian." : {
+    "The keyboard supports the Lezgi Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgi." : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The keyboard supports the Lezgian Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgian." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The keyboard supports the Lezgi Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgi." } },
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Клавиатура поддерживает лезгинский алфавит на кириллической основе. Особые буквы (цI, уь, кI, кь, къ и др.) доступны через долгое нажатие. Буква ъ вынесена на основную раскладку, потому что она часто используется в лезгинском языке." } }
       }
     }
