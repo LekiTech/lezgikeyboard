@@ -21,6 +21,8 @@ final class KeyboardModel: ObservableObject {
     @Published var needsGlobe: Bool = false
     // Space long-press trackpad mode: key labels hide while the cursor is dragged
     @Published var isSpaceCursorMode: Bool = false
+    // Keyboard name shown centered on the spacebar right after the keyboard appears
+    @Published var showsKeyboardName: Bool = false
 
     var isShifted: Bool { shiftState != .off }
     var isCapsLock: Bool { shiftState == .capsLock }
@@ -43,6 +45,9 @@ final class KeyboardModel: ObservableObject {
     // MARK: - Key handling
 
     func handleKey(_ cap: KeyCap, proxy: UITextDocumentProxy) {
+        // First keystroke dismisses the keyboard name on the spacebar, like native
+        showsKeyboardName = false
+
         switch cap {
 
         case .character(let s):

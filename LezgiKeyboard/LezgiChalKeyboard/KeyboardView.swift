@@ -844,7 +844,17 @@ private struct KeyButton: View {
                     .foregroundColor(Color(UIColor.systemGray2))
                     .padding(.trailing, 6)
                     .padding(.bottom, 4)
+                    .opacity(model.showsKeyboardName ? 0 : 1)
+                if model.showsKeyboardName {
+                    // Keyboard name shown centered right after the keyboard appears
+                    Text("Лезги чӏал")
+                        .font(.system(size: 16))
+                        .foregroundColor(Color(UIColor.label))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeOut(duration: 0.25), value: model.showsKeyboardName)
 
         case .return:
             let text = returnLabel(for: returnKeyType)
@@ -881,6 +891,8 @@ private struct KeyButton: View {
     }
 
     private var backgroundColor: Color {
-        isPressed ? .kbLetterKeyPressed : .kbLetterKey
+        // Spacebar is highlighted while it shows the keyboard name, like native
+        if case .space = cap, model.showsKeyboardName { return .kbLetterKeyPressed }
+        return isPressed ? .kbLetterKeyPressed : .kbLetterKey
     }
 }

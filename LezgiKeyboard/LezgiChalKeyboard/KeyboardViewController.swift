@@ -11,10 +11,22 @@ import SwiftUI
 class KeyboardViewController: UIInputViewController {
 
     private var model = KeyboardModel()
+    private var hideKeyboardNameWork: DispatchWorkItem?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupKeyboard()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        model.showsKeyboardName = true
+        hideKeyboardNameWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.model.showsKeyboardName = false
+        }
+        hideKeyboardNameWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
     }
 
     override func viewWillLayoutSubviews() {
