@@ -19,9 +19,9 @@ final class KeyboardModel: ObservableObject {
     @Published var suggestions: [String] = []
     @Published var returnKeyType: UIReturnKeyType = .default
     @Published var needsGlobe: Bool = false
-    // Space long-press trackpad mode: key labels hide while the cursor is dragged
+    /// Space long-press trackpad mode; key labels hide while the cursor is dragged.
     @Published var isSpaceCursorMode: Bool = false
-    // Keyboard name shown centered on the spacebar right after the keyboard appears
+    /// Keyboard name shown centered on the spacebar right after the keyboard appears.
     @Published var showsKeyboardName: Bool = false
 
     var isShifted: Bool { shiftState != .off }
@@ -110,12 +110,13 @@ final class KeyboardModel: ObservableObject {
 
     // MARK: - Cursor line jumps (space trackpad mode)
 
-    // Moves the cursor to the previous/next "\n"-separated line, keeping the
-    // column when the neighbouring line is visible in the document context.
-    // Many hosts truncate the context at paragraph boundaries, so without a
-    // visible "\n" we still cross one newline blindly: up lands at the end of
-    // the previous line, down at the start of the next (hosts clamp at the
-    // document edges). Visual wraps of long lines are invisible to extensions.
+    /// Moves the cursor to the previous/next `"\n"`-separated line, keeping the
+    /// column when the neighbouring line is visible in the document context.
+    ///
+    /// Many hosts truncate the context at paragraph boundaries, so without a
+    /// visible `"\n"` one newline is still crossed blindly: up lands at the end
+    /// of the previous line, down at the start of the next (hosts clamp at the
+    /// document edges). Visual wraps of long lines are invisible to extensions.
     func moveCursorLine(up: Bool, proxy: UITextDocumentProxy) {
         if up {
             let before = proxy.documentContextBeforeInput ?? ""

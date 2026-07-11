@@ -1,6 +1,16 @@
+//
+//  WordSuggestions.swift
+//  LezgiChalKeyboard
+//
+//  Created by Enver Eskendarov on 6/28/26.
+//
+
 import Foundation
 import SQLite3
 
+/// Prefix lookup in the bundled `lezgi_words.sqlite` dictionary.
+/// The dictionary stores palochka as Latin `I` (U+0049), so the prefix is
+/// normalized from Cyrillic `ӏ` (U+04CF) before querying.
 final class WordSuggestions {
     private var db: OpaquePointer?
     private var stmt: OpaquePointer?

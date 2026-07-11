@@ -201,10 +201,13 @@ struct KeyboardView: View {
 
     private let emojiRecentsID = -1
 
-    // Flat list of small 5-emoji columns. Nested lazy containers (grid inside
-    // stack) defeat laziness — every cell gets created for layout and the
-    // keyboard extension hits its memory limit on device. Small uniform
-    // children keep the LazyHStack truly lazy and scroll jumps precise.
+    /// One column of up to five emoji in the horizontally scrolling grid.
+    ///
+    /// The page renders a flat list of these small uniform columns instead of
+    /// per-category grids: nested lazy containers defeat laziness — every cell
+    /// gets created for layout and the keyboard extension hits its memory limit
+    /// on device. Small uniform children keep the `LazyHStack` truly lazy and
+    /// scroll jumps precise.
     private struct EmojiColumn: Identifiable {
         let id: Int
         let category: Int      // emojiRecentsID or index into EmojiData.categories
@@ -291,8 +294,8 @@ struct KeyboardView: View {
         .padding(.trailing, column.endsCategory ? 10 : 0)
     }
 
-    // Bottom strip like native: АБВ + category icons + delete, no key backgrounds.
-    // Visual layer + full-width gesture layer dispatching by x, same as RowView.
+    /// Bottom strip like native: АБВ + category icons + delete, no key backgrounds.
+    /// A visual layer plus a full-width gesture layer dispatching by x, same as `RowView`.
     private var emojiCategoryBar: some View {
         ZStack {
             // Visual layer, no gestures
@@ -459,8 +462,8 @@ struct KeyboardView: View {
 
 // MARK: - Emoji key press highlight
 
-// Rounded key-colored flash behind an emoji while touched, like native.
-// ButtonStyle gets isPressed for free and plays nice with the ScrollView.
+/// Rounded key-colored flash behind an emoji while touched, like native.
+/// `ButtonStyle` gets `isPressed` for free and plays nice with the `ScrollView`.
 private struct EmojiKeyButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -503,7 +506,7 @@ private struct RowView: View {
     private let spacing: CGFloat = 6
     private let keyHeight: CGFloat = 43
     private let rowSpacing: CGFloat = 11
-    // Row x-origin in keyboard space matches .padding(.horizontal, 6) on the VStack
+    /// Row x-origin in keyboard space; matches `.padding(.horizontal, 6)` on the VStack.
     private let rowLeadingX: CGFloat = 6
 
     private var unitWidth: CGFloat {
@@ -515,7 +518,7 @@ private struct RowView: View {
     private var bottomExpand: CGFloat { rowIndex == totalRows - 1 ? 0 : rowSpacing / 2 }
     private var zoneHeight:   CGFloat { keyHeight + topExpand + bottomExpand }
 
-    // Visual key frames in keyboard coordinate space.
+    /// Visual key frames in keyboard coordinate space.
     private var keyFrames: [(cap: KeyCap, frame: CGRect)] {
         var result: [(KeyCap, CGRect)] = []
         var x = rowLeadingX
@@ -559,7 +562,7 @@ private struct RowView: View {
         .frame(height: keyHeight)  // keep layout height at 43pt so VStack spacing is unchanged
     }
 
-    // Touch inside a key's visual frame → that key wins; gaps fall back to nearest midX.
+    /// A touch inside a key's visual frame wins; gaps fall back to the nearest `midX`.
     private func nearest(touchX: CGFloat) -> (cap: KeyCap, frame: CGRect)? {
         if let hit = keyFrames.first(where: { $0.frame.minX <= touchX && touchX <= $0.frame.maxX }) {
             return hit
@@ -629,7 +632,7 @@ private struct RowView: View {
         }
     }
 
-    // 8pt of horizontal movement = one character, 30pt vertically = one line
+    /// 8pt of horizontal movement moves the cursor one character; 30pt vertically, one line.
     private func spaceCursorDragged(to point: CGPoint) {
         let stepWidth: CGFloat = 8
         let steps = Int((point.x - spaceLastX) / stepWidth)
@@ -759,8 +762,8 @@ private struct KeyPreviewBubble: View {
     }
 }
 
-// One continuous silhouette for the key preview: rounded bubble on top,
-// sides curving inward to a neck matching the pressed key width, flat bottom.
+/// One continuous silhouette for the key preview: rounded bubble on top,
+/// sides curving inward to a neck matching the pressed key width, flat bottom.
 private struct KeyPreviewShape: Shape {
     let neckWidth: CGFloat
     let bubbleHeight: CGFloat
