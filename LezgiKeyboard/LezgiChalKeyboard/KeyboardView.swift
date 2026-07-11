@@ -47,6 +47,8 @@ struct KeyboardView: View {
     let onKey: (KeyCap) -> Void
     var onSuggestion: ((String) -> Void)? = nil
     var onEmojiInsert: ((String) -> Void)? = nil
+    var onCursorMove: ((Int) -> Void)? = nil
+    var onCursorLineMove: ((Int) -> Void)? = nil
 
     // Key preview bubble state
     @State private var pressedCap: KeyCap? = nil
@@ -448,7 +450,9 @@ struct KeyboardView: View {
                 }
                 isShowingCallout = false
                 calloutOptions = []
-            }
+            },
+            onCursorMove: { steps in onCursorMove?(steps) },
+            onCursorLineMove: { lines in onCursorLineMove?(lines) }
         )
     }
 }
@@ -482,6 +486,8 @@ private struct RowView: View {
     let onLongPress: (CGRect, [String]) -> Void
     let onDragMoved: (CGFloat) -> Void
     let onLongRelease: () -> Void
+    let onCursorMove: (Int) -> Void
+    let onCursorLineMove: (Int) -> Void
 
     @State private var rowMinY: CGFloat = 0
     @State private var isPressed = false
@@ -489,6 +495,10 @@ private struct RowView: View {
     @State private var longPressTimer: DispatchWorkItem? = nil
     @State private var repeatTimer: Timer? = nil
     @State private var activeCap: KeyCap? = nil
+    @State private var isSpaceCursorMode = false
+    @State private var spaceCursorTimer: DispatchWorkItem? = nil
+    @State private var spaceLastX: CGFloat = 0
+    @State private var spaceLastY: CGFloat = 0
 
     private let spacing: CGFloat = 6
     private let keyHeight: CGFloat = 43
@@ -559,13 +569,35 @@ private struct RowView: View {
 
     private func handleChanged(value: DragGesture.Value) {
         guard !isPressed else {
-            if isLongPressed { onDragMoved(value.location.x) }
+            if isLongPressed {
+                onDragMoved(value.location.x)
+            } else if isSpaceCursorMode {
+                spaceCursorDragged(to: value.location)
+            } else if activeCap == .space {
+                // Track the finger before cursor mode kicks in so activation
+                // starts from the current position without a jump
+                spaceLastX = value.location.x
+                spaceLastY = value.location.y
+            }
             return
         }
         isPressed = true
         guard let key = nearest(touchX: value.location.x) else { return }
         activeCap = key.cap
         onPress(key.cap, key.frame)
+
+        // Long-press on space enters cursor mode: dragging moves the insertion point
+        if case .space = key.cap {
+            spaceLastX = value.location.x
+            spaceLastY = value.location.y
+            let work = DispatchWorkItem {
+                guard isPressed else { return }
+                isSpaceCursorMode = true
+                model.isSpaceCursorMode = true
+            }
+            spaceCursorTimer = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
+        }
 
         // Backspace hold-to-repeat with acceleration
         if case .backspace = key.cap {
@@ -597,9 +629,28 @@ private struct RowView: View {
         }
     }
 
+    // 8pt of horizontal movement = one character, 30pt vertically = one line
+    private func spaceCursorDragged(to point: CGPoint) {
+        let stepWidth: CGFloat = 8
+        let steps = Int((point.x - spaceLastX) / stepWidth)
+        if steps != 0 {
+            onCursorMove(steps)
+            spaceLastX += CGFloat(steps) * stepWidth
+        }
+
+        let stepHeight: CGFloat = 30
+        let lineSteps = Int((point.y - spaceLastY) / stepHeight)
+        if lineSteps != 0 {
+            onCursorLineMove(lineSteps)
+            spaceLastY += CGFloat(lineSteps) * stepHeight
+        }
+    }
+
     private func handleEnded() {
         longPressTimer?.cancel()
         longPressTimer = nil
+        spaceCursorTimer?.cancel()
+        spaceCursorTimer = nil
         repeatTimer?.invalidate()
         repeatTimer = nil
         isPressed = false
@@ -607,6 +658,11 @@ private struct RowView: View {
         if isLongPressed {
             isLongPressed = false
             onLongRelease()
+        } else if isSpaceCursorMode {
+            // Cursor drag ends without inserting a space
+            isSpaceCursorMode = false
+            model.isSpaceCursorMode = false
+            onRelease()
         } else {
             onRelease()
             if let cap = activeCap { onKey(cap) }
@@ -770,6 +826,8 @@ private struct KeyButton: View {
     }
 
     private var hidesLabel: Bool {
+        // Native blanks all key labels while space-drag cursor mode is active
+        if model.isSpaceCursorMode { return true }
         if case .character = cap { return isPressed }
         return false
     }

@@ -19,11 +19,14 @@ final class KeyboardModel: ObservableObject {
     @Published var suggestions: [String] = []
     @Published var returnKeyType: UIReturnKeyType = .default
     @Published var needsGlobe: Bool = false
+    // Space long-press trackpad mode: key labels hide while the cursor is dragged
+    @Published var isSpaceCursorMode: Bool = false
 
     var isShifted: Bool { shiftState != .off }
     var isCapsLock: Bool { shiftState == .capsLock }
 
     private let wordDB = WordSuggestions()
+    private var lastSpaceTap: Date? = nil
 
     func updateSuggestions(proxy: UITextDocumentProxy) {
         let prefix = wordPrefix(proxy: proxy)
@@ -57,7 +60,19 @@ final class KeyboardModel: ObservableObject {
             }
 
         case .space:
-            proxy.insertText(" ")
+            // Quick double space after a word turns into ". " with a capital next
+            if let last = lastSpaceTap, Date().timeIntervalSince(last) < 0.35,
+               let before = proxy.documentContextBeforeInput,
+               before.hasSuffix(" "), before.count >= 2,
+               let prev = before.dropLast().last, prev.isLetter || prev.isNumber {
+                proxy.deleteBackward()
+                proxy.insertText(". ")
+                if shiftState != .capsLock { shiftState = .once }
+                lastSpaceTap = nil
+            } else {
+                proxy.insertText(" ")
+                lastSpaceTap = Date()
+            }
 
         case .return:
             proxy.insertText("\n")
@@ -86,6 +101,39 @@ final class KeyboardModel: ObservableObject {
         let before = proxy.documentContextBeforeInput ?? ""
         let after  = proxy.documentContextAfterInput  ?? ""
         if before.isEmpty && after.isEmpty { shiftState = .once }
+    }
+
+    // MARK: - Cursor line jumps (space trackpad mode)
+
+    // Moves the cursor to the previous/next "\n"-separated line, keeping the
+    // column when the neighbouring line is visible in the document context.
+    // Many hosts truncate the context at paragraph boundaries, so without a
+    // visible "\n" we still cross one newline blindly: up lands at the end of
+    // the previous line, down at the start of the next (hosts clamp at the
+    // document edges). Visual wraps of long lines are invisible to extensions.
+    func moveCursorLine(up: Bool, proxy: UITextDocumentProxy) {
+        if up {
+            let before = proxy.documentContextBeforeInput ?? ""
+            let lines = before.components(separatedBy: "\n")
+            let column = lines[lines.count - 1].count
+            if lines.count >= 2 {
+                let prevLen = lines[lines.count - 2].count
+                proxy.adjustTextPosition(byCharacterOffset: -(column + 1 + max(prevLen - column, 0)))
+            } else {
+                proxy.adjustTextPosition(byCharacterOffset: -(column + 1))
+            }
+        } else {
+            let after = proxy.documentContextAfterInput ?? ""
+            let lines = after.components(separatedBy: "\n")
+            let restOfCurrent = lines[0].count
+            if lines.count >= 2 {
+                let nextLen = lines[1].count
+                let column = (proxy.documentContextBeforeInput?.components(separatedBy: "\n").last ?? "").count
+                proxy.adjustTextPosition(byCharacterOffset: restOfCurrent + 1 + min(column, nextLen))
+            } else {
+                proxy.adjustTextPosition(byCharacterOffset: restOfCurrent + 1)
+            }
+        }
     }
 
     // MARK: - Emoji

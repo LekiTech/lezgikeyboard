@@ -91,6 +91,15 @@ class KeyboardViewController: UIInputViewController {
                 guard let self else { return }
                 self.textDocumentProxy.insertText(emoji)
                 self.model.recordRecentEmoji(emoji)
+            },
+            onCursorMove: { [weak self] offset in
+                self?.textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
+            },
+            onCursorLineMove: { [weak self] lines in
+                guard let self else { return }
+                for _ in 0..<abs(lines) {
+                    self.model.moveCursorLine(up: lines < 0, proxy: self.textDocumentProxy)
+                }
             }
         )
     }
