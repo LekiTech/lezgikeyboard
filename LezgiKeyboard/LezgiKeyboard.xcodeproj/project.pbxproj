@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		E27822DF2FF1F2A800255D0E /* LezgiChalKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E27822D82FF1F2A800255D0E /* LezgiChalKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E27823022FF2000000255D0E /* LezgiStickers.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E27823012FF2000000255D0E /* LezgiStickers.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E27823122FF2000000255D0E /* TelegramStickersImport in Frameworks */ = {isa = PBXBuildFile; productRef = E27823112FF2000000255D0E /* TelegramStickersImport */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +51,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E278230F2FF2000000255D0E /* Exceptions for "LezgiKeyboard" folder in "LezgiKeyboard" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E27822C52FF1F09E00255D0E /* LezgiKeyboard */;
+		};
 		E27822E02FF1F2A800255D0E /* Exceptions for "LezgiChalKeyboard" folder in "LezgiChalKeyboard" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -69,6 +77,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E27822C82FF1F09E00255D0E /* LezgiKeyboard */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E278230F2FF2000000255D0E /* Exceptions for "LezgiKeyboard" folder in "LezgiKeyboard" target */,
+			);
 			path = LezgiKeyboard;
 			sourceTree = "<group>";
 		};
@@ -95,6 +106,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E27823122FF2000000255D0E /* TelegramStickersImport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -158,6 +170,7 @@
 			);
 			name = LezgiKeyboard;
 			packageProductDependencies = (
+				E27823112FF2000000255D0E /* TelegramStickersImport */,
 			);
 			productName = LezgiKeyboard;
 			productReference = E27822C62FF1F09E00255D0E /* LezgiKeyboard.app */;
@@ -238,6 +251,9 @@
 			);
 			mainGroup = E27822BD2FF1F09E00255D0E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E27823102FF2000000255D0E /* XCRemoteSwiftPackageReference "TelegramStickersImport" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E27822C72FF1F09E00255D0E /* Products */;
 			projectDirPath = "";
@@ -443,6 +459,7 @@
 				DEVELOPMENT_TEAM = RC94H8KQYA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LezgiKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Lezgi;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -478,6 +495,7 @@
 				DEVELOPMENT_TEAM = RC94H8KQYA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LezgiKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Lezgi;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -645,6 +663,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E27823102FF2000000255D0E /* XCRemoteSwiftPackageReference "TelegramStickersImport" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/TelegramMessenger/TelegramStickersImport";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E27823112FF2000000255D0E /* TelegramStickersImport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E27823102FF2000000255D0E /* XCRemoteSwiftPackageReference "TelegramStickersImport" */;
+			productName = TelegramStickersImport;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E27822BE2FF1F09E00255D0E /* Project object */;
 }

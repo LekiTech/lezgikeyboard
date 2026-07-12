@@ -10,18 +10,26 @@ import SwiftUI
 struct ContentView: View {
 
     @Environment(\.openURL) private var openURL
+    @State private var stickerError: String?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 header
                 installCard
+                stickersCard
                 features
                 footer
             }
             .padding(20)
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .alert("Stickers", isPresented: .init(get: { stickerError != nil },
+                                              set: { if !$0 { stickerError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(stickerError ?? "")
+        }
     }
 
     // MARK: - Header
@@ -99,6 +107,39 @@ struct ContentView: View {
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
+    // MARK: - Stickers
+
+    private var stickersCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Eagle stickers")
+                .font(.title3.weight(.semibold))
+            Text("Add the Lezgi sticker pack to your favorite messenger. In iMessage the stickers appear automatically.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                MessengerButton(title: "WhatsApp", systemImage: "phone.fill", tint: .green) {
+                    share { try StickerSharing.addToWhatsApp() }
+                }
+                MessengerButton(title: "Telegram", systemImage: "paperplane.fill", tint: .blue) {
+                    share { try StickerSharing.addToTelegram() }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func share(_ action: () throws -> Void) {
+        do {
+            try action()
+        } catch {
+            stickerError = error.localizedDescription
+        }
+    }
+
     // MARK: - Footer
 
     private var footer: some View {
@@ -106,6 +147,26 @@ struct ContentView: View {
             .font(.footnote)
             .foregroundStyle(.tertiary)
             .padding(.bottom, 8)
+    }
+}
+
+// MARK: - Messenger button
+
+private struct MessengerButton: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.body.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(tint)
     }
 }
 

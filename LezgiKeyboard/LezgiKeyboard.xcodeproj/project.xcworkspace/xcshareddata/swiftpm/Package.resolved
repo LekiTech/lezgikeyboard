@@ -1,0 +1,15 @@
+{
+  "originHash" : "3eda35efcccb0768d62d34d01c514b709f072da0113138d76b97f4e7eef3e8fb",
+  "pins" : [
+    {
+      "identity" : "telegramstickersimport",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/TelegramMessenger/TelegramStickersImport",
+      "state" : {
+        "revision" : "b8951c8a02b245142142d341644d0756cf16278c",
+        "version" : "1.1.0"
+      }
+    }
+  ],
+  "version" : 3
+}
