@@ -38,6 +38,7 @@ let imageStickers: [ImageSticker] = [
     ImageSticker(source: "prayer",     phrase: "Амин!"),
     ImageSticker(source: "lezginka",   phrase: "Кьуьл ая!"),
     ImageSticker(source: "khinkal",    phrase: "Нуш хьуй!"),
+    ImageSticker(source: "lezgiflag",  phrase: "Лезгияр"),
 ]
 
 // MARK: - Paths
