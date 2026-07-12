@@ -186,16 +186,22 @@ func renderIcon(width: Int, height: Int, to url: URL) {
 }
 
 // (idiom, platform, size in pt, scale, pixel w, pixel h)
-let iconSlots: [(idiom: String, platform: String?, size: String, scale: String, w: Int, h: Int)] = [
+// Slot list and order mirror what Xcode's asset editor writes, so opening the
+// catalog does not rewrite Contents.json. The 29x29 legacy slots stay empty
+// (w/h nil): they are optional and no icon is rendered for them.
+let iconSlots: [(idiom: String, platform: String?, size: String, scale: String, w: Int?, h: Int?)] = [
+    ("iphone",        nil,   "29x29",     "2x", nil, nil),
+    ("iphone",        nil,   "29x29",     "3x", nil, nil),
+    ("iphone",        nil,   "60x45",     "2x", 120, 90),
+    ("iphone",        nil,   "60x45",     "3x", 180, 135),
+    ("ipad",          nil,   "29x29",     "2x", nil, nil),
+    ("ipad",          nil,   "67x50",     "2x", 134, 100),
+    ("ipad",          nil,   "74x55",     "2x", 148, 110),
+    ("ios-marketing", nil,   "1024x1024", "1x", 1024, 1024),
     ("universal",     "ios", "27x20",     "2x", 54, 40),
     ("universal",     "ios", "27x20",     "3x", 81, 60),
     ("universal",     "ios", "32x24",     "2x", 64, 48),
     ("universal",     "ios", "32x24",     "3x", 96, 72),
-    ("iphone",        nil,   "60x45",     "2x", 120, 90),
-    ("iphone",        nil,   "60x45",     "3x", 180, 135),
-    ("ipad",          nil,   "67x50",     "2x", 134, 100),
-    ("ipad",          nil,   "74x55",     "2x", 148, 110),
-    ("ios-marketing", nil,   "1024x1024", "1x", 1024, 1024),
     ("ios-marketing", "ios", "1024x768",  "1x", 1024, 768),
 ]
 
@@ -204,8 +210,9 @@ let iconSlots: [(idiom: String, platform: String?, size: String, scale: String, 
 let xcodeInfo: [String: Any] = ["author": "xcode", "version": 1]
 
 func writeJSON(_ object: [String: Any], to url: URL) {
-    let data = try! JSONSerialization.data(
+    var data = try! JSONSerialization.data(
         withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+    data.append(0x0A)  // trailing newline, matching Xcode's own output
     try! data.write(to: url)
 }
 
@@ -238,14 +245,15 @@ writeJSON([
 
 var iconImages: [[String: Any]] = []
 for slot in iconSlots {
-    let name = "icon-\(slot.w)x\(slot.h).png"
-    renderIcon(width: slot.w, height: slot.h, to: iconDir.appendingPathComponent(name))
-    var entry: [String: Any] = [
-        "filename": name, "idiom": slot.idiom, "scale": slot.scale, "size": slot.size,
-    ]
+    var entry: [String: Any] = ["idiom": slot.idiom, "scale": slot.scale, "size": slot.size]
     if let platform = slot.platform { entry["platform"] = platform }
+    if let w = slot.w, let h = slot.h {
+        let name = "icon-\(w)x\(h).png"
+        renderIcon(width: w, height: h, to: iconDir.appendingPathComponent(name))
+        entry["filename"] = name
+        print("icon \(name)")
+    }
     iconImages.append(entry)
-    print("icon \(name)")
 }
 writeJSON(["images": iconImages, "info": xcodeInfo],
           to: iconDir.appendingPathComponent("Contents.json"))
