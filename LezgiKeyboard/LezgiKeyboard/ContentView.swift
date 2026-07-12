@@ -13,10 +13,10 @@ struct ContentView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 28) {
+            VStack(spacing: 24) {
                 header
-                features
                 installCard
+                features
                 footer
             }
             .padding(20)
@@ -29,22 +29,21 @@ struct ContentView: View {
     private var header: some View {
         VStack(spacing: 12) {
             Image(systemName: "keyboard.fill")
-                .font(.system(size: 34))
+                .font(.system(size: 28))
                 .foregroundStyle(.white)
-                .frame(width: 76, height: 76)
+                .frame(width: 60, height: 60)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(LinearGradient(colors: [.blue, .indigo],
                                              startPoint: .topLeading,
                                              endPoint: .bottomTrailing))
                 )
             Text("Lezgi Keyboard")
-                .font(.largeTitle.weight(.bold))
+                .font(.title.weight(.bold))
             Text("Type in your native language")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
-        .padding(.top, 16)
     }
 
     // MARK: - Feature cards
