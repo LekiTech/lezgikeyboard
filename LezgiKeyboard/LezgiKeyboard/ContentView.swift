@@ -117,6 +117,13 @@ struct ContentView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
+            HStack(spacing: 10) {
+                ForEach(["salam", "loveyou", "lezginka", "khinkal", "lezgiflag"], id: \.self) {
+                    StickerThumb(name: $0)
+                }
+            }
+            .frame(maxWidth: .infinity)
+
             HStack(spacing: 12) {
                 MessengerButton(title: "WhatsApp", systemImage: "phone.fill", tint: .green) {
                     share { try StickerSharing.addToWhatsApp() }
@@ -147,6 +154,22 @@ struct ContentView: View {
             .font(.footnote)
             .foregroundStyle(.tertiary)
             .padding(.bottom, 8)
+    }
+}
+
+// MARK: - Sticker thumbnail
+
+private struct StickerThumb: View {
+    let name: String
+
+    var body: some View {
+        if let url = Bundle.main.url(forResource: name, withExtension: "webp"),
+           let image = UIImage(contentsOfFile: url.path) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 54, height: 54)
+        }
     }
 }
 
