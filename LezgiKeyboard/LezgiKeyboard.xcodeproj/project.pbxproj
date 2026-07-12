@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		E27822DF2FF1F2A800255D0E /* LezgiChalKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E27822D82FF1F2A800255D0E /* LezgiChalKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E27823022FF2000000255D0E /* LezgiStickers.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E27823012FF2000000255D0E /* LezgiStickers.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -17,6 +18,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = E27822D72FF1F2A800255D0E;
 			remoteInfo = LezgiChalKeyboard;
+		};
+		E27823032FF2000000255D0E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E27822BE2FF1F09E00255D0E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E27823052FF2000000255D0E;
+			remoteInfo = LezgiStickers;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -28,6 +36,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				E27822DF2FF1F2A800255D0E /* LezgiChalKeyboard.appex in Embed Foundation Extensions */,
+				E27823022FF2000000255D0E /* LezgiStickers.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -37,6 +46,7 @@
 /* Begin PBXFileReference section */
 		E27822C62FF1F09E00255D0E /* LezgiKeyboard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LezgiKeyboard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E27822D82FF1F2A800255D0E /* LezgiChalKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LezgiChalKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E27823012FF2000000255D0E /* LezgiStickers.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LezgiStickers.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -46,6 +56,13 @@
 				Info.plist,
 			);
 			target = E27822D72FF1F2A800255D0E /* LezgiChalKeyboard */;
+		};
+		E278230D2FF2000000255D0E /* Exceptions for "LezgiStickers" folder in "LezgiStickers" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E27823052FF2000000255D0E /* LezgiStickers */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -61,6 +78,14 @@
 				E27822E02FF1F2A800255D0E /* Exceptions for "LezgiChalKeyboard" folder in "LezgiChalKeyboard" target */,
 			);
 			path = LezgiChalKeyboard;
+			sourceTree = "<group>";
+		};
+		E27823092FF2000000255D0E /* LezgiStickers */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E278230D2FF2000000255D0E /* Exceptions for "LezgiStickers" folder in "LezgiStickers" target */,
+			);
+			path = LezgiStickers;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -80,6 +105,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E278230B2FF2000000255D0E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -88,6 +120,7 @@
 			children = (
 				E27822C82FF1F09E00255D0E /* LezgiKeyboard */,
 				E27822D92FF1F2A800255D0E /* LezgiChalKeyboard */,
+				E27823092FF2000000255D0E /* LezgiStickers */,
 				E27822C72FF1F09E00255D0E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -97,6 +130,7 @@
 			children = (
 				E27822C62FF1F09E00255D0E /* LezgiKeyboard.app */,
 				E27822D82FF1F2A800255D0E /* LezgiChalKeyboard.appex */,
+				E27823012FF2000000255D0E /* LezgiStickers.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -117,6 +151,7 @@
 			);
 			dependencies = (
 				E27822DE2FF1F2A800255D0E /* PBXTargetDependency */,
+				E27823042FF2000000255D0E /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				E27822C82FF1F09E00255D0E /* LezgiKeyboard */,
@@ -150,6 +185,28 @@
 			productReference = E27822D82FF1F2A800255D0E /* LezgiChalKeyboard.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		E27823052FF2000000255D0E /* LezgiStickers */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E27823062FF2000000255D0E /* Build configuration list for PBXNativeTarget "LezgiStickers" */;
+			buildPhases = (
+				E278230A2FF2000000255D0E /* Sources */,
+				E278230B2FF2000000255D0E /* Frameworks */,
+				E278230C2FF2000000255D0E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E27823092FF2000000255D0E /* LezgiStickers */,
+			);
+			name = LezgiStickers;
+			packageProductDependencies = (
+			);
+			productName = LezgiStickers;
+			productReference = E27823012FF2000000255D0E /* LezgiStickers.appex */;
+			productType = "com.apple.product-type.app-extension.messages-sticker-pack";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -164,6 +221,9 @@
 						CreatedOnToolsVersion = 26.6;
 					};
 					E27822D72FF1F2A800255D0E = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					E27823052FF2000000255D0E = {
 						CreatedOnToolsVersion = 26.6;
 					};
 				};
@@ -185,6 +245,7 @@
 			targets = (
 				E27822C52FF1F09E00255D0E /* LezgiKeyboard */,
 				E27822D72FF1F2A800255D0E /* LezgiChalKeyboard */,
+				E27823052FF2000000255D0E /* LezgiStickers */,
 			);
 		};
 /* End PBXProject section */
@@ -198,6 +259,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E27822D62FF1F2A800255D0E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E278230C2FF2000000255D0E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -221,6 +289,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E278230A2FF2000000255D0E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -228,6 +303,11 @@
 			isa = PBXTargetDependency;
 			target = E27822D72FF1F2A800255D0E /* LezgiChalKeyboard */;
 			targetProxy = E27822DD2FF1F2A800255D0E /* PBXContainerItemProxy */;
+		};
+		E27823042FF2000000255D0E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E27823052FF2000000255D0E /* LezgiStickers */;
+			targetProxy = E27823032FF2000000255D0E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -485,6 +565,46 @@
 			};
 			name = Release;
 		};
+		E27823072FF2000000255D0E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = RC94H8KQYA;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LezgiStickers/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lezgi Stickers";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lekitech.lezgikeyboard.LezgiStickers;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E27823082FF2000000255D0E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = RC94H8KQYA;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LezgiStickers/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lezgi Stickers";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vadivian.LezgiKeyboard.app.LezgiStickers;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -511,6 +631,15 @@
 			buildConfigurations = (
 				E27822E22FF1F2A800255D0E /* Debug */,
 				E27822E32FF1F2A800255D0E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E27823062FF2000000255D0E /* Build configuration list for PBXNativeTarget "LezgiStickers" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E27823072FF2000000255D0E /* Debug */,
+				E27823082FF2000000255D0E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

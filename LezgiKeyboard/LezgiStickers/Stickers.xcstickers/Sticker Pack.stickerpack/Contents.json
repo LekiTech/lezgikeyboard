@@ -1,0 +1,68 @@
+{
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  },
+  "properties" : {
+    "grid-size" : "large"
+  },
+  "stickers" : [
+    {
+      "filename" : "eagle_salam.sticker"
+    },
+    {
+      "filename" : "eagle_thanks.sticker"
+    },
+    {
+      "filename" : "eagle_sweetheart.sticker"
+    },
+    {
+      "filename" : "eagle_great.sticker"
+    },
+    {
+      "filename" : "eagle_yes.sticker"
+    },
+    {
+      "filename" : "eagle_no.sticker"
+    },
+    {
+      "filename" : "eagle_howareyou.sticker"
+    },
+    {
+      "filename" : "eagle_loveyou.sticker"
+    },
+    {
+      "filename" : "eagle_sorry.sticker"
+    },
+    {
+      "filename" : "eagle_bravo.sticker"
+    },
+    {
+      "filename" : "eagle_congrats.sticker"
+    },
+    {
+      "filename" : "eagle_welcome.sticker"
+    },
+    {
+      "filename" : "eagle_comehere.sticker"
+    },
+    {
+      "filename" : "eagle_morning.sticker"
+    },
+    {
+      "filename" : "eagle_angry.sticker"
+    },
+    {
+      "filename" : "eagle_goodnight.sticker"
+    },
+    {
+      "filename" : "eagle_prayer.sticker"
+    },
+    {
+      "filename" : "eagle_lezginka.sticker"
+    },
+    {
+      "filename" : "eagle_khinkal.sticker"
+    }
+  ]
+}
