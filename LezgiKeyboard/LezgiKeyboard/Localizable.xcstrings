@@ -7,10 +7,58 @@
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лезги Кхьин" } }
       }
     },
-    "Keyboard for the Lezgi language on iOS" : {
+    "Type in your native language" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keyboard for the Lezgi language on iOS" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Клавиатура для лезгинского языка на iOS" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Type in your native language" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Пишите на родном языке" } }
+      }
+    },
+    "Full Lezgi alphabet" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Full Lezgi alphabet" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Полный лезгинский алфавит" } }
+      }
+    },
+    "Palochka and digraphs like цӏ, къ, уь are one long press away" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Palochka and digraphs like цӏ, къ, уь are one long press away" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Палочка и диграфы — цӏ, къ, уь — через долгое нажатие" } }
+      }
+    },
+    "Word suggestions" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Word suggestions" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Подсказки слов" } }
+      }
+    },
+    "Over 20,000 Lezgi words, fully offline" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Over 20,000 Lezgi words, fully offline" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Более 20 000 лезгинских слов, полностью офлайн" } }
+      }
+    },
+    "Feels native" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Feels native" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Как системная" } }
+      }
+    },
+    "Matches the iOS keyboard down to the details" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Matches the iOS keyboard down to the details" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Повторяет клавиатуру iOS до мелочей" } }
+      }
+    },
+    "Private by design" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Private by design" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Приватная по умолчанию" } }
+      }
+    },
+    "Never asks for Full Access and sends nothing anywhere" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Never asks for Full Access and sends nothing anywhere" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Не требует полного доступа и ничего никуда не отправляет" } }
       }
     },
     "How to install" : {
@@ -19,22 +67,28 @@
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Как установить" } }
       }
     },
-    "Open **Settings** → **General** → **Keyboard**" : {
+    "Tap **Open Settings** below" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open **Settings** → **General** → **Keyboard**" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Откройте **Настройки** → **Основные** → **Клавиатура**" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap **Open Settings** below" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Нажмите **«Открыть Настройки»** ниже" } }
       }
     },
-    "Tap **Keyboards** → **Add New Keyboard**" : {
+    "Tap **Keyboards**" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap **Keyboards** → **Add New Keyboard**" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Нажмите **Клавиатуры** → **Добавить новую клавиатуру**" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap **Keyboards**" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Выберите **Клавиатуры**" } }
       }
     },
-    "Select **Lezgi Keyboard** from the list" : {
+    "Turn on **Lezgi Keyboard**" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select **Lezgi Keyboard** from the list" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Выберите **Лезги Кхьин** в списке" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn on **Lezgi Keyboard**" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Включите **Лезги Кхьин**" } }
+      }
+    },
+    "Tip: you can also add the keyboard via **Settings → General → Keyboard → Keyboards**" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tip: you can also add the keyboard via **Settings → General → Keyboard → Keyboards**" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Подсказка: клавиатуру также можно добавить через **Настройки → Основные → Клавиатура → Клавиатуры**" } }
       }
     },
     "Switch languages using the 🌐 key on the keyboard" : {
@@ -43,16 +97,16 @@
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Для переключения между языками нажимайте кнопку 🌐 на клавиатуре" } }
       }
     },
-    "About the keyboard" : {
+    "Open Settings" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "About the keyboard" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "О клавиатуре" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Открыть Настройки" } }
       }
     },
-    "The keyboard supports the Lezgi Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgi." : {
+    "Developed by LekiTech" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The keyboard supports the Lezgi Cyrillic alphabet. Special letters (цI, уь, кI, кь, къ etc.) are available via long press. The ъ key is placed on the main layout because it is frequently used in Lezgi." } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Клавиатура поддерживает лезгинский алфавит на кириллической основе. Особые буквы (цI, уь, кI, кь, къ и др.) доступны через долгое нажатие. Буква ъ вынесена на основную раскладку, потому что она часто используется в лезгинском языке." } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Developed by LekiTech" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Разработано LekiTech" } }
       }
     }
   },
