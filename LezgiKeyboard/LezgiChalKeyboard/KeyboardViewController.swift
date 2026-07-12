@@ -38,6 +38,7 @@ class KeyboardViewController: UIInputViewController {
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
         model.returnKeyType = textDocumentProxy.returnKeyType ?? .default
+        model.updateShiftFromContext(proxy: textDocumentProxy)
         model.updateSuggestions(proxy: textDocumentProxy)
     }
 
@@ -83,7 +84,7 @@ class KeyboardViewController: UIInputViewController {
                 if cap == .globe { self.advanceToNextInputMode(); return }
                 self.model.handleKey(cap, proxy: self.textDocumentProxy)
                 if cap == .backspace {
-                    self.model.autoCapitalizeIfNeeded(proxy: self.textDocumentProxy)
+                    self.model.updateShiftFromContext(proxy: self.textDocumentProxy)
                 }
                 self.model.updateSuggestions(proxy: self.textDocumentProxy)
             },

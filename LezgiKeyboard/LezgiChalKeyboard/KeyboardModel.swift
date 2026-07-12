@@ -81,6 +81,11 @@ final class KeyboardModel: ObservableObject {
 
         case .return:
             proxy.insertText("\n")
+            // A new paragraph starts a new sentence, like the native keyboard
+            if shiftState != .capsLock,
+               (proxy.autocapitalizationType ?? .sentences) != .none {
+                shiftState = .once
+            }
 
         case .backspace:
             proxy.deleteBackward()
@@ -101,11 +106,38 @@ final class KeyboardModel: ObservableObject {
         }
     }
 
-    func autoCapitalizeIfNeeded(proxy: UITextDocumentProxy) {
+    // MARK: - Auto-capitalization
+
+    /// Re-evaluates the shift state from the field's autocapitalization trait
+    /// and the text before the cursor. Called on every text or cursor change;
+    /// Caps Lock always wins over the automatic rules.
+    func updateShiftFromContext(proxy: UITextDocumentProxy) {
         guard shiftState != .capsLock else { return }
-        let before = proxy.documentContextBeforeInput ?? ""
-        let after  = proxy.documentContextAfterInput  ?? ""
-        if before.isEmpty && after.isEmpty { shiftState = .once }
+        let type = proxy.autocapitalizationType ?? .sentences
+        let shouldShift: Bool
+        switch type {
+        case .none:
+            shouldShift = false
+        case .allCharacters:
+            shouldShift = true
+        case .words:
+            let before = proxy.documentContextBeforeInput ?? ""
+            shouldShift = before.isEmpty || before.last?.isWhitespace == true
+        default:
+            shouldShift = isCursorAtSentenceStart(proxy: proxy)
+        }
+        shiftState = shouldShift ? .once : .off
+    }
+
+    /// Sentence start: empty or whitespace-only context, a fresh new line, or
+    /// a sentence delimiter as the last non-whitespace character. A trailing
+    /// space is not required, matching the native period behavior.
+    private func isCursorAtSentenceStart(proxy: UITextDocumentProxy) -> Bool {
+        guard let before = proxy.documentContextBeforeInput, !before.isEmpty else { return true }
+        if before.last?.isNewline == true { return true }
+        let trimmed = before.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let last = trimmed.last else { return true }
+        return [".", "!", "?"].contains(String(last))
     }
 
     // MARK: - Cursor line jumps (space trackpad mode)
