@@ -81,8 +81,6 @@ func savePNG(_ ctx: CGContext, to url: URL) {
 
 // MARK: - Image sticker rendering
 
-let stickerSize = 618  // "large" grid size, 206x206 pt @3x
-
 func loadImage(_ url: URL) -> CGImage {
     guard let image = NSImage(contentsOf: url),
           let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -91,21 +89,37 @@ func loadImage(_ url: URL) -> CGImage {
     return cg
 }
 
-/// Downscale a source illustration to the 618x618 sticker canvas.
-/// Stickers must stay under 500 KB; detailed drawings that exceed it are
-/// re-rendered slightly smaller until they fit (Messages scales them back up).
+// actool warns on stickers over 500 KB ("cannot be larger than 512000 bytes"),
+// so oversized originals would be rejected by App Store validation.
+let enforceStickerSizeLimit = true
+
+/// Place a source illustration into the pack. Originals are copied byte-for-byte;
+/// with the size limit enforced, oversized drawings are re-rendered at the
+/// largest side length that still fits (found by binary search).
 func renderImageSticker(from source: URL, to url: URL) {
+    guard enforceStickerSizeLimit else {
+        try! fm.copyItem(at: source, to: url)
+        return
+    }
+
     let image = loadImage(source)
-    var side = stickerSize
-    while true {
+
+    func render(side: Int) -> Int {
         let ctx = makeContext(width: side, height: side, opaque: false)
         ctx.interpolationQuality = .high
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
         savePNG(ctx, to: url)
-        let bytes = try! fm.attributesOfItem(atPath: url.path)[.size] as! Int
-        if bytes <= 500_000 || side <= 300 { break }
-        side = Int(Double(side) * 0.92)
+        return try! fm.attributesOfItem(atPath: url.path)[.size] as! Int
     }
+
+    if render(side: image.width) <= 500_000 { return }
+    var lo = 300, hi = image.width  // lo always fits, hi never does
+    while hi - lo > 8 {
+        let mid = (lo + hi) / 2
+        if render(side: mid) <= 500_000 { lo = mid } else { hi = mid }
+    }
+    _ = render(side: lo)
+    print("  (\(source.lastPathComponent) resized to \(lo)px to fit 500 KB)")
 }
 
 // MARK: - Icon rendering
