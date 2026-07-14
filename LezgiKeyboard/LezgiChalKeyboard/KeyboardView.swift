@@ -41,6 +41,10 @@ private func returnLabel(for type: UIReturnKeyType) -> String {
 
 // MARK: - Root view
 
+/// SwiftUI rendering of the keyboard: key grid, suggestion bar (including
+/// the inline learned-word delete confirmation), emoji page, key preview
+/// bubbles and long-press callouts. All state decisions live in
+/// `KeyboardModel`; this view only draws and reports gestures via closures.
 struct KeyboardView: View {
 
     @ObservedObject var model: KeyboardModel

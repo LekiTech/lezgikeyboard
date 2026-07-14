@@ -12,6 +12,10 @@ enum ShiftState {
     case off, once, capsLock
 }
 
+/// The keyboard's brain: page and shift state, key handling, composed-word
+/// tracking, suggestion generation with shared capitalization, and the
+/// on-device learning hooks. Rendering lives in `KeyboardView`, the UIKit
+/// bridge in `KeyboardViewController`. See docs/CODEBASE_OVERVIEW.md.
 final class KeyboardModel: ObservableObject {
 
     @Published var page: KeyboardPage = .letters

@@ -8,6 +8,11 @@
 import UIKit
 import SwiftUI
 
+/// UIKit bridge for the keyboard extension: hosts the SwiftUI keyboard,
+/// owns `textDocumentProxy`, wires the view's closures into `KeyboardModel`,
+/// and forwards `textDidChange` so the model can resync with the host app.
+/// Never present UIKit view controllers (alerts) from here — the restricted
+/// extension environment kills the keyboard.
 class KeyboardViewController: UIInputViewController {
 
     private var model = KeyboardModel()
