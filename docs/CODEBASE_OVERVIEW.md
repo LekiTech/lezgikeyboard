@@ -112,8 +112,10 @@ keyboard and iOS switches to another one.
   `user_bigram(prev, word, count, last_used)`, `meta(key, value)` with
   `schema_version`, `total_events`, `filters_version`.
 - Learn events: a word is recorded when completed (space / return /
-  sentence punctuation typed after it) and when picked from the bar
-  (`picked` counter — a stronger signal). Words are stored lowercase.
+  sentence punctuation typed after it), when picked from the bar
+  (`picked` counter — a stronger signal), and when the host app commits it
+  by clearing the field (see "Immediate send" below). Words are stored
+  lowercase.
 - Filters (`isLearnable`): at least 2 *Lezgi letters* — digraph tails
   (`ӏ`, `ь`, `ъ`, derived from `LezgiLayout.callouts`) do not count as
   letters, so a lone `цӏ` is rejected; no digits; no `@ / .`; max 64
@@ -232,9 +234,32 @@ keyboard view.
 - Only single words and word pairs are stored — never sentences or message
   text.
 - iOS swaps in the system keyboard for secure (password) fields.
-- Known limitation: a word sent via the app's own Send button without a
-  trailing space/return is never seen as completed (no API for it); the
-  return key path is covered.
+
+### Immediate send
+
+Typing a word and tapping the app's own **Send** button (no trailing
+space/punctuation) is covered by a narrow signal in
+`KeyboardModel.learnWordCommittedByHostClear` (called first from
+`syncComposedWord` on `textDidChange`): messengers clear the field after
+sending, the host's edit fires `textDidChange`, and the document turns
+completely empty (`proxy.hasText == false`) while `composedWord` still
+holds the word — that commits it (with the bigram from
+`lastCompletedWord`). Deliberately narrow:
+
+- cursor moves, focus changes, and edits that leave text in the field
+  never trigger it;
+- the keyboard's own edits cannot trigger it (`composedWord` is cleared
+  synchronously by space/punctuation/return/suggestion accept, so no
+  double-learning);
+- nothing is learned on `viewWillDisappear` — a word left in the field is
+  a draft, not a commit;
+- the Stage 2 filters and the 3-confirmation visibility threshold apply as
+  usual, which also absorbs the rare false positives (a search field's
+  clear button, tapping into another empty field).
+
+Remaining limitation: hosts that do **not** clear the field on send (e.g.
+a mail composer that closes instead) give no signal, and the word is not
+learned there.
 
 Any change that would relax these constraints belongs to roadmap Stage 7
 and requires the research listed there first.

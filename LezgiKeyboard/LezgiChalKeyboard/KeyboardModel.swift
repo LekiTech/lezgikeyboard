@@ -50,8 +50,23 @@ final class KeyboardModel: ObservableObject {
     /// Realigns the local buffers once the host has confirmed the document
     /// state (cursor moves, field switches, our own edits landing).
     func syncComposedWord(proxy: UITextDocumentProxy) {
+        learnWordCommittedByHostClear(proxy: proxy)
         composedWord = wordPrefix(proxy: proxy)
         lastCompletedWord = previousWord(proxy: proxy)
+    }
+
+    /// Sending a message usually clears the field without the word ever
+    /// getting a trailing space, so it would never be learned. A clear is
+    /// visible to the extension: the host's edit fires `textDidChange` (our
+    /// own edits keep `composedWord` in sync before any event arrives) and
+    /// the document turns completely empty. That signal commits the word
+    /// being composed. Deliberately narrow: cursor moves and edits leave
+    /// text in the document and never trigger; the rare false positives
+    /// (a search field's clear button, tapping into another empty field)
+    /// are absorbed by the 3-confirmation visibility threshold.
+    private func learnWordCommittedByHostClear(proxy: UITextDocumentProxy) {
+        guard !composedWord.isEmpty, !proxy.hasText else { return }
+        learned?.learn(composedWord, previous: lastCompletedWord, picked: false)
     }
 
     /// Display forms of the current suggestions that came from the learned

@@ -53,15 +53,17 @@ replaces custom keyboards with the system one, so passwords are never seen.
       keyboard and iOS falls back to another one — first attempt used an
       alert and hit exactly that.)
 
-### Known limitation — immediate send
+### Immediate send (mostly covered)
 
 If the user types a word and immediately taps the app's own **Send** button
-(no space, punctuation, or return after the word), the keyboard never sees
-the word being completed: extensions get no "will send" hook, and by the
-time `textDidChange` fires the field is already empty. Sends triggered by
-the return key are covered (the word is learned before the newline is
-inserted). No fragile workaround is attempted — revisit if Apple ever adds
-an API for this.
+(no space, punctuation, or return after the word), extensions get no "will
+send" hook — but messengers clear the field after sending, and that
+host-driven clear is observable: `textDidChange` fires with a completely
+empty document while the locally tracked composed word is still non-empty,
+which commits the word (see CODEBASE_OVERVIEW.md, "Immediate send").
+Return-key sends were always covered. Remaining gap: hosts that do not
+clear the field on send (e.g. a closing mail composer) still give no
+signal, and no fragile workaround is attempted for them.
 
 ## Stage 2 — Cleanup / limits
 
