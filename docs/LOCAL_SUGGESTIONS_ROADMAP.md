@@ -65,12 +65,12 @@ an API for this.
 
 ## Stage 2 — Cleanup / limits
 
-- [ ] Prune old and rare learned words when caps are exceeded
-- [ ] Decay counters over time (e.g., halve all counts when the total event
+- [x] Prune old and rare learned words when caps are exceeded
+- [x] Decay counters over time (e.g., halve all counts when the total event
       counter passes a threshold) so stale habits fade out
-- [ ] Enforce size limits for `learned.sqlite` (target: a few MB at most,
+- [x] Enforce size limits for `learned.sqlite` (target: a few MB at most,
       hard cap on row counts)
-- [ ] Do not learn emails, URLs, tokens with digits, or very short tokens
+- [x] Do not learn emails, URLs, tokens with digits, or very short tokens
       (fewer than 2 characters)
 
 ## Stage 3 — Local bigrams
