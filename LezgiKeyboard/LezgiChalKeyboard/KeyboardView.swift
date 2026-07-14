@@ -46,6 +46,7 @@ struct KeyboardView: View {
     @ObservedObject var model: KeyboardModel
     let onKey: (KeyCap) -> Void
     var onSuggestion: ((String) -> Void)? = nil
+    var onSuggestionDelete: ((String) -> Void)? = nil
     var onEmojiInsert: ((String) -> Void)? = nil
     var onCursorMove: ((Int) -> Void)? = nil
     var onCursorLineMove: ((Int) -> Void)? = nil
@@ -56,6 +57,12 @@ struct KeyboardView: View {
 
     // Suggestion bar press state
     @State private var pressedSuggestionIndex: Int? = nil
+    @State private var suggestionLongPressWork: DispatchWorkItem? = nil
+    @State private var suggestionLongPressFired = false
+    /// Learned word awaiting delete confirmation; the bar shows an inline
+    /// confirm row while set (UIKit alerts cannot be presented from keyboard
+    /// extensions — attempting it kills the keyboard).
+    @State private var pendingDeleteWord: String? = nil
 
     // Emoji page state
     @State private var emojiCurrentSection: Int = 0
@@ -128,6 +135,53 @@ struct KeyboardView: View {
     // MARK: - Suggestion bar
 
     private var suggestionBar: some View {
+        Group {
+            if let word = pendingDeleteWord {
+                deleteConfirmBar(word: word)
+            } else {
+                suggestionCells
+            }
+        }
+        .frame(height: 36)
+        .onChange(of: model.suggestions) { _, _ in pendingDeleteWord = nil }
+    }
+
+    /// Inline confirmation shown in place of the suggestions after a
+    /// long-press on a learned word. Stays entirely inside the keyboard view.
+    private func deleteConfirmBar(word: String) -> some View {
+        HStack(spacing: 12) {
+            // Keyboard UI speaks Lezgi: «стереть слово?» — «нет» / «стереть»
+            Text(verbatim: "“\(word)” чӏурдани?")
+                .font(.system(size: 15))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Spacer(minLength: 0)
+            Button {
+                pendingDeleteWord = nil
+            } label: {
+                Text(verbatim: "Ваъ")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(UIColor.label))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 5)
+                    .background(Color.kbLetterKey, in: Capsule())
+            }
+            Button {
+                pendingDeleteWord = nil
+                onSuggestionDelete?(word)
+            } label: {
+                Text(verbatim: "Чӏурун")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 5)
+                    .background(Color.red.opacity(0.12), in: Capsule())
+            }
+        }
+        .padding(.horizontal, 12)
+    }
+
+    private var suggestionCells: some View {
         let words = paddedSuggestions()
         return ZStack(alignment: .leading) {
             // Visual layer: highlights + text + dividers, no gestures
@@ -146,11 +200,32 @@ struct KeyboardView: View {
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
                                 let idx = suggestionIndex(x: value.location.x, width: geo.size.width)
-                                if pressedSuggestionIndex != idx { pressedSuggestionIndex = idx }
+                                guard pressedSuggestionIndex != idx else { return }
+                                pressedSuggestionIndex = idx
+                                // Long-press offers to delete a learned suggestion;
+                                // dictionary words have nothing to delete
+                                suggestionLongPressWork?.cancel()
+                                suggestionLongPressFired = false
+                                let word = words[idx]
+                                if !word.isEmpty, model.isLearnedSuggestion(word) {
+                                    let work = DispatchWorkItem {
+                                        suggestionLongPressFired = true
+                                        pressedSuggestionIndex = nil
+                                        pendingDeleteWord = word
+                                    }
+                                    suggestionLongPressWork = work
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
+                                }
                             }
                             .onEnded { value in
-                                let idx = suggestionIndex(x: value.location.x, width: geo.size.width)
+                                suggestionLongPressWork?.cancel()
+                                suggestionLongPressWork = nil
                                 pressedSuggestionIndex = nil
+                                guard !suggestionLongPressFired else {
+                                    suggestionLongPressFired = false
+                                    return
+                                }
+                                let idx = suggestionIndex(x: value.location.x, width: geo.size.width)
                                 let word = words[idx]
                                 guard !word.isEmpty else { return }
                                 onSuggestion?(word)

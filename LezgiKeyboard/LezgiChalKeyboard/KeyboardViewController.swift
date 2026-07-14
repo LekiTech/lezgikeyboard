@@ -42,6 +42,7 @@ class KeyboardViewController: UIInputViewController {
         model.updateSuggestions(proxy: textDocumentProxy)
     }
 
+
     private func setupKeyboard() {
         let hc = UIHostingController(rootView: makeKeyboardView())
         addChild(hc)
@@ -93,9 +94,14 @@ class KeyboardViewController: UIInputViewController {
                 let prefix = self.model.wordPrefix(proxy: self.textDocumentProxy)
                 for _ in prefix { self.textDocumentProxy.deleteBackward() }
                 self.textDocumentProxy.insertText(word + " ")
+                self.model.recordPickedSuggestion(word)
                 if self.model.shiftState == .once { self.model.shiftState = .off }
                 self.model.suggestions = []
                 self.model.updateSuggestions(proxy: self.textDocumentProxy)
+            },
+            onSuggestionDelete: { [weak self] word in
+                guard let self else { return }
+                self.model.deleteLearnedWord(word, proxy: self.textDocumentProxy)
             },
             onEmojiInsert: { [weak self] emoji in
                 guard let self else { return }

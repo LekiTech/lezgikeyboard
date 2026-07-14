@@ -28,11 +28,89 @@ final class KeyboardModel: ObservableObject {
     var isCapsLock: Bool { shiftState == .capsLock }
 
     private let wordDB = WordSuggestions()
+    private let learned = LearnedWords()
     private var lastSpaceTap: Date? = nil
 
+    /// Display forms of the current suggestions that came from the learned
+    /// store — the only ones long-press deletion applies to.
+    private(set) var learnedDisplayWords: Set<String> = []
+
+    /// Merges learned words (best first) with the bundled dictionary.
+    /// The dictionary stores palochka as Latin `I`, learned words keep it as
+    /// typed (`ӏ`), so deduplication normalizes both forms. Both kinds follow
+    /// the capitalization context of the word being typed.
     func updateSuggestions(proxy: UITextDocumentProxy) {
         let prefix = wordPrefix(proxy: proxy)
-        suggestions = prefix.isEmpty ? [] : (wordDB?.suggestions(for: prefix) ?? [])
+        guard !prefix.isEmpty else {
+            suggestions = []
+            learnedDisplayWords = []
+            return
+        }
+        let learnedWords = learned?.suggestions(for: prefix) ?? []
+        var merged = learnedWords
+        var seen = Set(merged.map(Self.dedupKey))
+        for word in wordDB?.suggestions(for: prefix) ?? []
+        where seen.insert(Self.dedupKey(word)).inserted {
+            merged.append(word)
+        }
+
+        var display: [String] = []
+        var learnedSet: Set<String> = []
+        for (index, word) in merged.prefix(3).enumerated() {
+            let form = displayForm(word, prefix: prefix)
+            display.append(form)
+            if index < learnedWords.count { learnedSet.insert(form) }
+        }
+        suggestions = display
+        learnedDisplayWords = learnedSet
+    }
+
+    /// Matches the suggestion's case to the typing context: Caps Lock shows
+    /// the whole word uppercased; a capitalized prefix (sentence start, empty
+    /// field, manual Shift) capitalizes the first letter; otherwise the word
+    /// stays as stored.
+    private func displayForm(_ word: String, prefix: String) -> String {
+        if isCapsLock {
+            return word.uppercased()
+        }
+        if prefix.first?.isUppercase == true || shiftState == .once {
+            return word.prefix(1).uppercased() + word.dropFirst()
+        }
+        return word
+    }
+
+    private static func dedupKey(_ word: String) -> String {
+        word.lowercased().replacingOccurrences(of: "ӏ", with: "i")
+    }
+
+    // MARK: - Learning (Stage 1, docs/LOCAL_SUGGESTIONS_ROADMAP.md)
+
+    /// Punctuation that finishes the word before it, like space and return do.
+    private static let wordTerminators: Set<String> = [".", ",", "?", "!", ";", ":"]
+
+    /// Records the word before the cursor as completed. Called before the
+    /// terminator (space / return / punctuation) is inserted.
+    private func learnCompletedWord(proxy: UITextDocumentProxy) {
+        let word = wordPrefix(proxy: proxy)
+        guard !word.isEmpty else { return }
+        learned?.learn(word, picked: false)
+    }
+
+    /// Records a suggestion chosen from the bar — a stronger signal than typing.
+    func recordPickedSuggestion(_ word: String) {
+        learned?.learn(word, picked: true)
+    }
+
+    /// Whether this displayed suggestion came from the learned store.
+    func isLearnedSuggestion(_ display: String) -> Bool {
+        learnedDisplayWords.contains(display)
+    }
+
+    /// Removes a learned word chosen from the bar; the bundled dictionary
+    /// keeps suggesting its own entries as usual.
+    func deleteLearnedWord(_ display: String, proxy: UITextDocumentProxy) {
+        learned?.delete(display)
+        updateSuggestions(proxy: proxy)
     }
 
     func wordPrefix(proxy: UITextDocumentProxy) -> String {
@@ -51,6 +129,7 @@ final class KeyboardModel: ObservableObject {
         switch cap {
 
         case .character(let s):
+            if Self.wordTerminators.contains(s) { learnCompletedWord(proxy: proxy) }
             let text = isShifted ? LezgiLayout.applyCase(s, capsLock: isCapsLock) : s
             proxy.insertText(text)
             if shiftState == .once { shiftState = .off }
@@ -75,11 +154,13 @@ final class KeyboardModel: ObservableObject {
                 if shiftState != .capsLock { shiftState = .once }
                 lastSpaceTap = nil
             } else {
+                learnCompletedWord(proxy: proxy)
                 proxy.insertText(" ")
                 lastSpaceTap = Date()
             }
 
         case .return:
+            learnCompletedWord(proxy: proxy)
             proxy.insertText("\n")
             // A new paragraph starts a new sentence, like the native keyboard
             if shiftState != .capsLock,

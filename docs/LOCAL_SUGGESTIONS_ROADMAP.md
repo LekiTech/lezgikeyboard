@@ -29,17 +29,39 @@ replaces custom keyboards with the system one, so passwords are never seen.
 
 ## Stage 1 — Local learned word frequency
 
-- [ ] Create `learned.sqlite` in the keyboard extension's own container
+- [x] Create `learned.sqlite` in the keyboard extension's own container
       (`Application Support`, WAL mode, schema version in a `meta` table)
-- [ ] Store individual learned words only — no sentences, no context text
-- [ ] Track per word: `word`, `count`, `picked` (times chosen from the
+- [x] Store individual learned words only — no sentences, no context text
+- [x] Track per word: `word`, `count`, `picked` (times chosen from the
       suggestion bar), `last_used` timestamp
-- [ ] Learn when a word is completed (space / punctuation / return after it)
-- [ ] Learn with extra weight when a suggestion is selected from the bar
-- [ ] Merge learned words into the current prefix-based suggestions from
+- [x] Learn when a word is completed (space / punctuation / return after it)
+- [x] Learn with extra weight when a suggestion is selected from the bar
+- [x] Merge learned words into the current prefix-based suggestions from
       `lezgi_words.sqlite`
-- [ ] Boost learned words in ranking; boost picked words above merely typed
+- [x] Boost learned words in ranking; boost picked words above merely typed
       ones
+- [x] Words are stored from the first use but appear in suggestions only
+      after 3 confirmations (typed or picked) — a typo made once or twice
+      never surfaces
+- [x] Suggestions follow the capitalization context (sentence start, empty
+      field, Shift, Caps Lock) — consistently for learned and dictionary words
+- [x] Long-press on a learned suggestion offers to remove it from
+      `learned.sqlite` via an inline confirmation row inside the suggestion
+      bar. Dictionary suggestions are never deleted — if a word exists in
+      both, only the learned record goes. (UIKit alerts must not be presented
+      from a keyboard extension: the restricted environment kills the
+      keyboard and iOS falls back to another one — first attempt used an
+      alert and hit exactly that.)
+
+### Known limitation — immediate send
+
+If the user types a word and immediately taps the app's own **Send** button
+(no space, punctuation, or return after the word), the keyboard never sees
+the word being completed: extensions get no "will send" hook, and by the
+time `textDidChange` fires the field is already empty. Sends triggered by
+the return key are covered (the word is learned before the newline is
+inserted). No fragile workaround is attempted — revisit if Apple ever adds
+an API for this.
 
 ## Stage 2 — Cleanup / limits
 
