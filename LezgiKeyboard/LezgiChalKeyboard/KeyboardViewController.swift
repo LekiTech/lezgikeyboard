@@ -108,9 +108,12 @@ class KeyboardViewController: UIInputViewController {
                 self.textDocumentProxy.insertText(word + " ")
                 self.model.recordPickedSuggestion(word, previous: previous)
                 if self.model.shiftState == .once { self.model.shiftState = .off }
-                // No recompute here: the proxy context is still catching up
-                // with the insertion and would resurface the accepted word.
-                self.model.clearSuggestions()
+                // Hosts do not send textDidChange for the keyboard's own
+                // edits, so refresh here: composedWord is already cleared,
+                // which chains straight into next-word suggestions for the
+                // accepted word (the stale context cannot resurface it —
+                // the prefix comes from composedWord, not the proxy).
+                self.model.updateSuggestions(proxy: self.textDocumentProxy)
             },
             onSuggestionDelete: { [weak self] word in
                 guard let self else { return }

@@ -41,10 +41,17 @@ final class KeyboardModel: ObservableObject {
     /// to replace. Resynced from the context on every `textDidChange`.
     private(set) var composedWord = ""
 
-    /// Realigns the local buffer once the host has confirmed the document
+    /// The most recent completed word of the current sentence, tracked
+    /// synchronously (the proxy context lags) — the source for Stage 4
+    /// next-word suggestions. nil right after `.` `!` `?` or return, so
+    /// next-word suggestions never cross a sentence boundary.
+    private var lastCompletedWord: String?
+
+    /// Realigns the local buffers once the host has confirmed the document
     /// state (cursor moves, field switches, our own edits landing).
     func syncComposedWord(proxy: UITextDocumentProxy) {
         composedWord = wordPrefix(proxy: proxy)
+        lastCompletedWord = previousWord(proxy: proxy)
     }
 
     /// Display forms of the current suggestions that came from the learned
@@ -65,8 +72,20 @@ final class KeyboardModel: ObservableObject {
         // suggestions (start of message, after . ! ?, Caps Lock)
         fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
         guard !prefix.isEmpty else {
-            suggestions = []
-            learnedDisplayWords = []
+            // Stage 4: with no active prefix, suggest likely next words from
+            // the learned bigrams of the last completed word. When there is
+            // no last word (sentence start) or no confident pairs, the bar
+            // falls back to the random dictionary words above.
+            let nextWords = lastCompletedWord.flatMap { learned?.nextWords(after: $0) } ?? []
+            var display: [String] = []
+            var learnedSet: Set<String> = []
+            for word in nextWords {
+                let form = displayForm(word, prefix: "", proxy: proxy)
+                display.append(form)
+                learnedSet.insert(form)
+            }
+            suggestions = display
+            learnedDisplayWords = learnedSet
             return
         }
         let learnedWords = learned?.suggestions(for: prefix,
@@ -121,25 +140,23 @@ final class KeyboardModel: ObservableObject {
 
     /// Records the word before the cursor as completed, together with the
     /// word preceding it in the same sentence. Called before the terminator
-    /// (space / return / punctuation) is inserted.
+    /// (space / return / punctuation) is inserted; the terminator handlers
+    /// clear `lastCompletedWord` again when they end the sentence.
     private func learnCompletedWord(proxy: UITextDocumentProxy) {
         let word = wordPrefix(proxy: proxy)
         guard !word.isEmpty else { return }
         learned?.learn(word, previous: previousWord(proxy: proxy), picked: false)
+        lastCompletedWord = word
     }
 
     /// Records a suggestion chosen from the bar — a stronger signal than
     /// typing. `previous` must be captured before the prefix is replaced.
+    /// The accepted word is inserted with a trailing space, so it becomes
+    /// the completed word the next-word suggestions chain from.
     func recordPickedSuggestion(_ word: String, previous: String?) {
         learned?.learn(word, previous: previous, picked: true)
         composedWord = ""
-    }
-
-    /// Empties the bar immediately (used right after a suggestion is
-    /// accepted); the settled context repopulates it via `textDidChange`.
-    func clearSuggestions() {
-        suggestions = []
-        learnedDisplayWords = []
+        lastCompletedWord = word
     }
 
     /// Random dictionary words shown while the bar has no real suggestions —
@@ -217,6 +234,8 @@ final class KeyboardModel: ObservableObject {
             } else {
                 composedWord += text
             }
+            // Sentence-ending punctuation cuts the next-word context
+            if [".", "?", "!"].contains(s) { lastCompletedWord = nil }
             if shiftState == .once { shiftState = .off }
             // Punctuation on the numbers/symbols pages returns to the letters page,
             // like the native keyboard; sentence-ending marks capitalize the next letter
@@ -238,6 +257,7 @@ final class KeyboardModel: ObservableObject {
                 proxy.insertText(". ")
                 if shiftState != .capsLock { shiftState = .once }
                 lastSpaceTap = nil
+                lastCompletedWord = nil  // ". " ends the sentence
             } else {
                 learnCompletedWord(proxy: proxy)
                 proxy.insertText(" ")
@@ -249,6 +269,7 @@ final class KeyboardModel: ObservableObject {
             learnCompletedWord(proxy: proxy)
             proxy.insertText("\n")
             composedWord = ""
+            lastCompletedWord = nil  // a new line starts a new sentence
             // A new paragraph starts a new sentence, like the native keyboard
             if shiftState != .capsLock,
                (proxy.autocapitalizationType ?? .sentences) != .none {

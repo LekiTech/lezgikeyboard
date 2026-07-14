@@ -86,10 +86,11 @@ an API for this.
 
 ## Stage 4 — Next-word suggestions
 
-- [ ] When the prefix is empty right after a space, suggest likely next
+- [x] When the prefix is empty right after a space, suggest likely next
       words instead of showing nothing
-- [ ] Rank by bigrams for the previous word first, then fall back to
-      recent/frequent learned words
+- [x] Rank by bigrams for the previous word first; when there is no last
+      word or no confident pairs (a pair must be seen at least twice), the
+      bar keeps the random dictionary fallback
 
 ## Stage 5 — Reset learned data
 

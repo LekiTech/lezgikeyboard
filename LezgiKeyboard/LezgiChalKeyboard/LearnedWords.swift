@@ -23,6 +23,9 @@ final class LearnedWords {
     /// A word must be confirmed this many times (typed or picked) before it
     /// starts being suggested, so a typo made once or twice never surfaces.
     private static let minUses = 3
+    /// A pair must be seen this many times before it produces next-word
+    /// suggestions, so a one-off combination never surfaces.
+    private static let minPairUses = 2
     /// Words used within this window get a recency boost in ranking.
     private static let recencyWindow: TimeInterval = 14 * 24 * 3600
     /// Hard cap on stored words; the lowest-ranked rows are pruned past it,
@@ -153,6 +156,33 @@ final class LearnedWords {
             sqlite3_finalize(pairStmt)
         }
         maintain()
+    }
+
+    /// Most likely follow-ups to `previous` from the bigram table, best
+    /// first (Stage 4 next-word suggestions). Recent pairs get the same
+    /// boost as recent words.
+    func nextWords(after previous: String, limit: Int = 3) -> [String] {
+        let prev = previous.lowercased()
+        guard !prev.isEmpty else { return [] }
+        var stmt: OpaquePointer?
+        let sql = """
+            SELECT word FROM user_bigram
+            WHERE prev = ?1 AND count >= ?2 AND LENGTH(word) >= 2
+            ORDER BY count * (CASE WHEN last_used >= ?3 THEN 2 ELSE 1 END) DESC,
+                     last_used DESC
+            LIMIT ?4
+            """
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, prev, -1, SQLITE_TRANSIENT)
+        sqlite3_bind_int(stmt, 2, Int32(Self.minPairUses))
+        sqlite3_bind_int64(stmt, 3, Int64(Date().timeIntervalSince1970 - Self.recencyWindow))
+        sqlite3_bind_int(stmt, 4, Int32(limit))
+        var results: [String] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }
+        }
+        return results
     }
 
     // MARK: - Cleanup (Stage 2)

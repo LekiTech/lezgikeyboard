@@ -3,9 +3,8 @@
 A practical map of the project for future developers and AI agents. It
 describes the implementation as it is today — see
 [LOCAL_SUGGESTIONS_ROADMAP.md](LOCAL_SUGGESTIONS_ROADMAP.md) for what is
-planned but not built. **Stage 4 (next-word prediction) is NOT implemented
-yet**: with an empty prefix the bar shows random fallback words, not
-predictions.
+planned but not built (roadmap Stages 1–4 are implemented; Stage 5+ are
+not).
 
 ## Project rule: documentation stays current
 
@@ -87,7 +86,8 @@ never touches the previous completed word (empty prefix ⇒ nothing deleted).
 
 `KeyboardModel.updateSuggestions(proxy:)`:
 
-1. Prefix = `composedWord`; empty prefix ⇒ bar shows fallback words (below).
+1. Prefix = `composedWord`; empty prefix ⇒ next-word suggestions (below),
+   or fallback words when there are none.
 2. Learned candidates come first: `LearnedWords.suggestions(for:previous:)`.
 3. Dictionary candidates (`WordSuggestions`, `LIKE prefix%` ordered by
    length) fill the remaining slots; duplicates are removed by normalizing
@@ -137,9 +137,34 @@ keyboard and iOS switches to another one.
   sentence boundary (`.` `!` `?` or newline) — **bigrams never cross a
   sentence**. If the host truncates the context, it returns nil and the
   pair is simply skipped.
-- Bigrams only *rank* (multiplier above); they do not add candidates.
-  For picked suggestions the previous word is captured **before** the
-  prefix is replaced.
+- Bigrams *rank* prefix suggestions (multiplier above) and produce
+  next-word suggestions (below); they never add candidates to prefix
+  suggestions. For picked suggestions the previous word is captured
+  **before** the prefix is replaced.
+
+## Next-word suggestions (Stage 4)
+
+With no active prefix, the bar suggests likely next words from the learned
+bigrams of the last completed word:
+
+- `lastCompletedWord` is tracked synchronously in `KeyboardModel` (the
+  proxy context lags): set when a word is completed or a suggestion is
+  accepted, cleared by `.` `!` `?`, double-space period, and return — so
+  next-word suggestions never cross a sentence boundary — and resynced from
+  the settled context on `textDidChange`. After a comma or a plain space
+  the last word stays available.
+- Candidates come from `LearnedWords.nextWords(after:)`: pairs for that
+  word with `count >= 2` (a one-off pair never surfaces), ranked by count
+  with the usual 14-day recency boost.
+- They are learned data, so long-press deletion applies (it removes the
+  learned word and its pairs). Tapping one inserts it without deleting
+  anything (the prefix is empty) and reinforces the pair.
+- Accepting any suggestion refreshes the bar in the tap handler itself —
+  hosts do not send `textDidChange` for the keyboard's own edits — so
+  next-word suggestions chain immediately after the accepted word.
+- No last word or no confident pairs ⇒ the random dictionary fallback
+  below; typing any letter switches the bar back to normal prefix
+  suggestions.
 
 ## Capitalization
 
@@ -159,7 +184,8 @@ lowercase.
 
 ## Random fallback suggestions
 
-When nothing is being typed the bar shows 3 random dictionary words
+When nothing is being typed and there are no next-word suggestions, the
+bar shows 3 random dictionary words
 (`WordSuggestions.randomWords`), re-rolled once per keyboard appearance and
 kept in `fallbackWords`; their display form is recomputed on every context
 change so they follow the capitalization rules. Tapping one inserts it
