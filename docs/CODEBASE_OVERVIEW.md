@@ -45,7 +45,7 @@ WhatsApp/Telegram WebP assets, `gen_emoji.py` for `EmojiData.swift`);
 
 | File | Responsibility |
 |---|---|
-| `LezgiKeyboardLayout.swift` | **Single source of truth for the layout**: key rows, long-press callouts (digraphs like `цӏ`, `къ`, `уь`), case rules, labels. Palochka is inserted as Cyrillic `ӏ` (U+04CF); the dictionary stores Latin `I` |
+| `LezgiKeyboardLayout.swift` | **Single source of truth for the layout**: key rows, long-press callouts (digraphs like `цӏ`, `къ`, `уь`), case rules, labels. Palochka is the Cyrillic `ӏ` (U+04CF) everywhere — typed text and dictionary alike |
 | `KeyboardViewController.swift` | UIKit bridge (`UIInputViewController`): hosts the SwiftUI view, wires closures, forwards `textDidChange`, owns the `textDocumentProxy` |
 | `KeyboardModel.swift` | The brain: pages/shift state, key handling, composed-word tracking, suggestion generation and capitalization, learning hooks |
 | `KeyboardView.swift` | SwiftUI rendering: key grid, suggestion bar (with inline learned-word delete), emoji page, preview bubbles, callouts |
@@ -90,8 +90,9 @@ never touches the previous completed word (empty prefix ⇒ nothing deleted).
    or fallback words when there are none.
 2. Learned candidates come first: `LearnedWords.suggestions(for:previous:)`.
 3. Dictionary candidates (`WordSuggestions`, `LIKE prefix%` ordered by
-   length) fill the remaining slots; duplicates are removed by normalizing
-   palochka (`ӏ` typed vs Latin `I` in the dictionary) and case.
+   length) fill the remaining slots; duplicates are removed by
+   case-insensitive comparison (dictionary and typed text share the same
+   Cyrillic palochka `ӏ`).
 4. Top 3 go through `displayForm` (capitalization) and into `suggestions`;
    the learned subset is remembered in `learnedDisplayWords` so the view
    knows which entries support long-press deletion.
@@ -114,10 +115,10 @@ keyboard and iOS switches to another one.
   sentence punctuation typed after it) and when picked from the bar
   (`picked` counter — a stronger signal). Words are stored lowercase.
 - Filters (`isLearnable`): at least 2 *Lezgi letters* — digraph tails
-  (`ӏ`, `ь`, `ъ`, derived from `LezgiLayout.callouts`, plus Latin `i`) do
-  not count as letters, so a lone `цӏ` is rejected; no digits; no `@ / .`;
-  max 64 characters. Bumping `filtersVersion` purges old records that no
-  longer pass.
+  (`ӏ`, `ь`, `ъ`, derived from `LezgiLayout.callouts`) do not count as
+  letters, so a lone `цӏ` is rejected; no digits; no `@ / .`; max 64
+  characters. Bumping `filtersVersion` purges old records that no longer
+  pass.
 - Visibility threshold: a word appears in suggestions only after
   **3 confirmations** (`count + picked >= 3`), so a typo made once or twice
   never surfaces.
@@ -238,12 +239,13 @@ keyboard view.
 Any change that would relax these constraints belongs to roadmap Stage 7
 and requires the research listed there first.
 
-## Known TODOs
+## Palochka convention
 
-- **Latin `I` vs Cyrillic palochka `ӏ`**: the bundled dictionary stores
-  palochka as Latin `I`, so dictionary suggestions can display and insert
-  Latin `I` while typed text uses the real Cyrillic palochka (`ӏ`, U+04CF).
-  Deduplication already normalizes the two forms, but a separate cleanup
-  task should migrate `lezgi_words.sqlite` (and the query normalization in
-  `WordSuggestions`/`LearnedWords`) to the real Cyrillic palochka
-  everywhere. Deliberately not part of Stage 5.
+Everything uses the Cyrillic palochka `ӏ` (U+04CF): the layout inserts it,
+`lezgi_words.sqlite` stores it (the dictionary originally used Latin `I`
+and was migrated in place — all 2,374 affected rows), and the learned
+store performs a one-time on-device migration (`meta` key
+`palochka_fixed`) that rewrites any leftover Latin-`i` learned rows and
+bigrams, merging counters into existing `ӏ`-form rows. No query
+normalization between the two forms exists anymore; purely Latin tokens
+without Cyrillic letters are left untouched by the migration.

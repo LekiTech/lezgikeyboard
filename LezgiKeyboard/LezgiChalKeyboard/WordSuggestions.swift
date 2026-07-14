@@ -9,8 +9,9 @@ import Foundation
 import SQLite3
 
 /// Prefix lookup in the bundled `lezgi_words.sqlite` dictionary.
-/// The dictionary stores palochka as Latin `I` (U+0049), so the prefix is
-/// normalized from Cyrillic `ӏ` (U+04CF) before querying.
+/// The dictionary and the typed text both use the Cyrillic palochka `ӏ`
+/// (U+04CF) and are fully lowercase, so the lowercased prefix matches
+/// byte-for-byte — no normalization needed.
 final class WordSuggestions {
     private var db: OpaquePointer?
     private var stmt: OpaquePointer?
@@ -25,7 +26,7 @@ final class WordSuggestions {
 
     func suggestions(for prefix: String) -> [String] {
         guard !prefix.isEmpty, let stmt else { return [] }
-        let pattern = prefix.lowercased().replacingOccurrences(of: "ӏ", with: "I") + "%"
+        let pattern = prefix.lowercased() + "%"
         sqlite3_reset(stmt)
         sqlite3_bind_text(stmt, 1, (pattern as NSString).utf8String, -1, nil)
         var results: [String] = []

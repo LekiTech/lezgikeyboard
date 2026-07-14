@@ -59,9 +59,9 @@ final class KeyboardModel: ObservableObject {
     private(set) var learnedDisplayWords: Set<String> = []
 
     /// Merges learned words (best first) with the bundled dictionary.
-    /// The dictionary stores palochka as Latin `I`, learned words keep it as
-    /// typed (`ӏ`), so deduplication normalizes both forms. Both kinds follow
-    /// the capitalization context of the word being typed.
+    /// Both use the Cyrillic palochka `ӏ`, so deduplication is a plain
+    /// case-insensitive comparison. Both kinds follow the capitalization
+    /// context of the word being typed.
     ///
     /// The prefix is the locally composed word, not the proxy context: the
     /// context lags behind our own edits, which used to resurface the just
@@ -130,7 +130,7 @@ final class KeyboardModel: ObservableObject {
     }
 
     private static func dedupKey(_ word: String) -> String {
-        word.lowercased().replacingOccurrences(of: "ӏ", with: "i")
+        word.lowercased()
     }
 
     // MARK: - Learning (Stage 1, docs/LOCAL_SUGGESTIONS_ROADMAP.md)

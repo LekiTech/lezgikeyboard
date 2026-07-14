@@ -42,8 +42,7 @@ final class LearnedWords {
     /// longer pass are purged once per bump.
     private static let filtersVersion = 1
 
-    /// Digraph tails taken from the layout's long-press alternates (ӏ, ь, ъ)
-    /// plus the Latin palochka form the bundled dictionary uses (lowercased).
+    /// Digraph tails taken from the layout's long-press alternates (ӏ, ь, ъ).
     /// A tail extends the previous letter instead of counting as its own, so
     /// "цӏ" or "къ" is one Lezgi letter even though it is two characters.
     private static let digraphTails: Set<Character> = {
@@ -53,7 +52,6 @@ final class LearnedWords {
                 if let tail = alternate.last { tails.insert(tail) }
             }
         }
-        tails.insert("i")
         return tails
     }()
 
@@ -101,6 +99,14 @@ final class LearnedWords {
         if intValue("SELECT value FROM meta WHERE key = 'filters_version'") < Self.filtersVersion {
             purgeUnlearnableWords()
             exec("INSERT OR REPLACE INTO meta(key, value) VALUES('filters_version', \(Self.filtersVersion))")
+        }
+        // One-time migration: words picked from the pre-migration dictionary
+        // were stored with palochka as Latin "i"; the dictionary now uses
+        // the Cyrillic palochka everywhere, so those rows are rewritten,
+        // merging counters when the ӏ-form already exists.
+        if intValue("SELECT value FROM meta WHERE key = 'palochka_fixed'") < 1 {
+            migrateLatinPalochka()
+            exec("INSERT OR REPLACE INTO meta(key, value) VALUES('palochka_fixed', 1)")
         }
     }
 
@@ -203,6 +209,85 @@ final class LearnedWords {
         } else if events % Self.pruneCheckEvery == 0 {
             prune()
         }
+    }
+
+    /// Rewrites learned rows whose palochka is a leftover Latin "i" (words
+    /// picked from the pre-migration dictionary). Counters merge into an
+    /// existing ӏ-form row; purely Latin tokens without Cyrillic letters
+    /// (e.g. borrowed words) are left alone.
+    private func migrateLatinPalochka() {
+        func fixed(_ word: String) -> String? {
+            guard word.contains("i"),
+                  word.unicodeScalars.contains(where: {
+                      (0x0430...0x044F).contains($0.value) || $0.value == 0x04CF
+                  })
+            else { return nil }
+            return word.replacingOccurrences(of: "i", with: "ӏ")
+        }
+
+        var stmt: OpaquePointer?
+        var words: [(old: String, new: String)] = []
+        if sqlite3_prepare_v2(db, "SELECT word FROM user_word WHERE word LIKE '%i%'",
+                              -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let c = sqlite3_column_text(stmt, 0) {
+                    let old = String(cString: c)
+                    if let new = fixed(old) { words.append((old, new)) }
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+        for (old, new) in words {
+            run("""
+                INSERT INTO user_word(word, count, picked, last_used)
+                SELECT ?2, count, picked, last_used FROM user_word WHERE word = ?1
+                ON CONFLICT(word) DO UPDATE SET
+                    count = count + excluded.count,
+                    picked = picked + excluded.picked,
+                    last_used = MAX(last_used, excluded.last_used)
+                """, old, new)
+            run("DELETE FROM user_word WHERE word = ?1", old)
+        }
+
+        var pairStmt: OpaquePointer?
+        var pairs: [(oldPrev: String, oldWord: String, newPrev: String, newWord: String)] = []
+        if sqlite3_prepare_v2(db, "SELECT prev, word FROM user_bigram WHERE prev LIKE '%i%' OR word LIKE '%i%'",
+                              -1, &pairStmt, nil) == SQLITE_OK {
+            while sqlite3_step(pairStmt) == SQLITE_ROW {
+                if let p = sqlite3_column_text(pairStmt, 0),
+                   let w = sqlite3_column_text(pairStmt, 1) {
+                    let oldPrev = String(cString: p), oldWord = String(cString: w)
+                    let newPrev = fixed(oldPrev) ?? oldPrev
+                    let newWord = fixed(oldWord) ?? oldWord
+                    if newPrev != oldPrev || newWord != oldWord {
+                        pairs.append((oldPrev, oldWord, newPrev, newWord))
+                    }
+                }
+            }
+        }
+        sqlite3_finalize(pairStmt)
+        for pair in pairs {
+            run("""
+                INSERT INTO user_bigram(prev, word, count, last_used)
+                SELECT ?3, ?4, count, last_used FROM user_bigram WHERE prev = ?1 AND word = ?2
+                ON CONFLICT(prev, word) DO UPDATE SET
+                    count = count + excluded.count,
+                    last_used = MAX(last_used, excluded.last_used)
+                """, pair.oldPrev, pair.oldWord, pair.newPrev, pair.newWord)
+            run("DELETE FROM user_bigram WHERE prev = ?1 AND word = ?2", pair.oldPrev, pair.oldWord)
+        }
+    }
+
+    /// Prepares, binds text parameters in order, and steps a one-shot
+    /// statement.
+    private func run(_ sql: String, _ params: String...) {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+        defer { sqlite3_finalize(stmt) }
+        for (index, param) in params.enumerated() {
+            sqlite3_bind_text(stmt, Int32(index + 1), param, -1, SQLITE_TRANSIENT)
+        }
+        sqlite3_step(stmt)
     }
 
     /// Deletes every stored word that no longer passes `isLearnable` —

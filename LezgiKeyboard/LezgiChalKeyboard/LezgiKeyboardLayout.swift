@@ -12,7 +12,7 @@ import SwiftUI
 
 /// What a key does when tapped.
 /// .character("ӏ") inserts Cyrillic Palochka (U+04CF) — the correct Unicode character for the Lezgi bar letter.
-/// When querying lezgi_words.sqlite (which uses Latin I), normalize: replace "ӏ" → "I" before the query.
+/// lezgi_words.sqlite uses the same Cyrillic palochka, so queries need no normalization.
 enum KeyCap: Equatable {
     case character(String)
     case shift
