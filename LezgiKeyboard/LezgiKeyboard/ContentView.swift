@@ -69,7 +69,7 @@ struct ContentView: View {
                         subtitle: "Matches the iOS keyboard down to the details")
             FeatureCard(icon: "lock.shield.fill", tint: .purple,
                         title: "Private by design",
-                        subtitle: "Never asks for Full Access and sends nothing anywhere")
+                        subtitle: "Never asks for Full Access and sends nothing anywhere — word learning stays on this device and can be reset from the keyboard")
         }
     }
 

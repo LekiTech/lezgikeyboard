@@ -184,6 +184,14 @@ final class KeyboardModel: ObservableObject {
         updateSuggestions(proxy: proxy)
     }
 
+    /// Stage 5: wipes the whole learned store (words and pairs) and
+    /// refreshes the bar. Triggered from the idle suggestion bar.
+    func resetLearnedWords(proxy: UITextDocumentProxy) {
+        learned?.reset()
+        lastCompletedWord = nil
+        updateSuggestions(proxy: proxy)
+    }
+
     private static let wordSeparators = CharacterSet.whitespacesAndNewlines
         .union(CharacterSet(charactersIn: ".,!?;:\"'()[]{}—–-"))
 

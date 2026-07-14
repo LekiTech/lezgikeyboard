@@ -3,7 +3,7 @@
 A practical map of the project for future developers and AI agents. It
 describes the implementation as it is today — see
 [LOCAL_SUGGESTIONS_ROADMAP.md](LOCAL_SUGGESTIONS_ROADMAP.md) for what is
-planned but not built (roadmap Stages 1–4 are implemented; Stage 5+ are
+planned but not built (roadmap Stages 1–5 are implemented; Stage 6+ are
 not).
 
 ## Project rule: documentation stays current
@@ -192,12 +192,42 @@ change so they follow the capitalization rules. Tapping one inserts it
 without deleting anything; long-press does nothing (they are not learned
 records). There are no hardcoded placeholder words.
 
+## Resetting learned data (Stage 5)
+
+On the idle bar (the random-fallback state only — never while typing or
+while real suggestions are shown) the gear is a fourth, clearly separated
+control: `[ cell ] [ cell ] [ cell ] | [ gear ]`, split from the cells by
+the same divider they use between themselves. The tap target is a
+56×36pt key-sized button (the icon itself stays small), its pressed
+highlight is confined to the button, and the cells' gesture layer covers
+exactly the three cells — neither side can steal the other's taps.
+
+Because this wipes everything (unlike the per-word delete), confirmation is
+**two-step**, all inline in the bar:
+
+1. Gear tap → «Чирнавай гафар чӏурдани?» — [Ваъ] [Чӏурун]. «Чӏурун» does
+   **not** reset; it only advances to the second step.
+2. → «Вири гафар чӏурда. Рази яни?» — [Эхь] [Ваъ]. The button order is
+   mirrored between the steps, so the screen spot the user just tapped now
+   holds «Ваъ» — a hasty double-tap in the same place cancels instead of
+   confirming. Only the explicit «Эхь» resets.
+
+Cancel at either step (or simply typing) returns to the idle fallback
+words. Confirming calls `LearnedWords.reset()`, which wipes `user_word`,
+`user_bigram`, and the event counter (the bundled dictionary is untouched),
+clears `lastCompletedWord`, and refreshes the bar so learned and next-word
+suggestions disappear immediately. No UIKit alerts, no modal presentation,
+no hold gestures or progress bars — everything stays inside the SwiftUI
+keyboard view.
+
 ## Privacy / local-first constraints
 
 - `RequestsOpenAccess = false` — the keyboard never asks for Full Access;
   iOS therefore denies it network access at the OS level.
 - No server, no analytics, no uploads; everything learned stays in the
   extension sandbox and dies with the app.
+- The user can wipe all learned data at any time from the keyboard itself
+  (gear icon on the idle suggestion bar).
 - Only single words and word pairs are stored — never sentences or message
   text.
 - iOS swaps in the system keyboard for secure (password) fields.
@@ -207,3 +237,13 @@ records). There are no hardcoded placeholder words.
 
 Any change that would relax these constraints belongs to roadmap Stage 7
 and requires the research listed there first.
+
+## Known TODOs
+
+- **Latin `I` vs Cyrillic palochka `ӏ`**: the bundled dictionary stores
+  palochka as Latin `I`, so dictionary suggestions can display and insert
+  Latin `I` while typed text uses the real Cyrillic palochka (`ӏ`, U+04CF).
+  Deduplication already normalizes the two forms, but a separate cleanup
+  task should migrate `lezgi_words.sqlite` (and the query normalization in
+  `WordSuggestions`/`LearnedWords`) to the real Cyrillic palochka
+  everywhere. Deliberately not part of Stage 5.

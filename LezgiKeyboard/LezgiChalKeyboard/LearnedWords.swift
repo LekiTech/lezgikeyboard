@@ -291,6 +291,15 @@ final class LearnedWords {
         return results
     }
 
+    /// Stage 5: wipes everything learned — words, pairs, and the event
+    /// counter. The bundled dictionary is untouched.
+    func reset() {
+        exec("DELETE FROM user_word")
+        exec("DELETE FROM user_bigram")
+        exec("UPDATE meta SET value = 0 WHERE key = 'total_events'")
+        exec("VACUUM")
+    }
+
     /// Removes a single learned word and every pair that references it
     /// (the bundled dictionary is untouched).
     func delete(_ word: String) {

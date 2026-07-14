@@ -119,6 +119,10 @@ class KeyboardViewController: UIInputViewController {
                 guard let self else { return }
                 self.model.deleteLearnedWord(word, proxy: self.textDocumentProxy)
             },
+            onLearnedReset: { [weak self] in
+                guard let self else { return }
+                self.model.resetLearnedWords(proxy: self.textDocumentProxy)
+            },
             onEmojiInsert: { [weak self] emoji in
                 guard let self else { return }
                 self.textDocumentProxy.insertText(emoji)

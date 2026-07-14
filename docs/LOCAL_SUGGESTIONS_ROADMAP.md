@@ -94,13 +94,20 @@ an API for this.
 
 ## Stage 5 — Reset learned data
 
-- [ ] Add a way to reset learned suggestions from inside the keyboard
+- [x] Add a way to reset learned suggestions from inside the keyboard
       (learned data lives in the keyboard's sandbox, so the reset control
       must be in the keyboard itself — the containing app cannot reach it
-      without Full Access)
-- [ ] Document the privacy behavior clearly in the app and README: what is
+      without Full Access). Implemented as a gear icon on the idle
+      suggestion bar (visible only when random fallback words are shown)
+      that opens a two-step inline Lezgi confirmation: the first «Чӏурун»
+      only advances to a stronger "are you sure" step with mirrored button
+      order (a hasty double-tap lands on cancel), and only the explicit
+      «Эхь» wipes learned words and bigrams and refreshes the bar
+      immediately
+- [x] Document the privacy behavior clearly in the app and README: what is
       stored, where it lives, that deleting the app deletes it, and how to
-      reset it manually
+      reset it manually (README keyboard section, the app's privacy feature
+      card, and docs/CODEBASE_OVERVIEW.md)
 
 ## Stage 6 — Optional future local improvements
 

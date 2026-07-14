@@ -15,14 +15,19 @@ Lezgi should feel exactly as natural as typing in Russian or English.
 
 - Full Lezgi alphabet — palochka (Ӏ) and digraphs like цӀ, къ, уь are one
   long press away, and ъ has its own key next to the space bar
-- Word suggestions from an offline dictionary of more than 20,000 Lezgi words
+- Word suggestions from an offline dictionary of more than 20,000 Lezgi
+  words, plus the words and word pairs it learns from your own typing —
+  including next-word suggestions
 - Matches the native iOS keyboard down to the details: key preview bubbles,
   callout menus with swipe selection, caps lock, auto-capitalization,
   spacebar cursor control, hold-to-repeat delete
 - Full emoji page with categories, recents, and search-free navigation
 - Localized in English and Russian
 - Private by design: the keyboard never asks for Full Access and sends
-  nothing anywhere
+  nothing anywhere. All learning happens on this device only — no network,
+  no server, nothing you type is uploaded. Learned words live in the
+  keyboard's own storage, can be reset anytime with the gear icon on the
+  suggestion bar, and are deleted together with the app
 
 ## The Stickers
 
