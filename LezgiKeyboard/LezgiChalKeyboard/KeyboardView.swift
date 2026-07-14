@@ -244,8 +244,7 @@ struct KeyboardView: View {
     }
 
     private func paddedSuggestions() -> [String] {
-        if model.suggestions.isEmpty { return ["Зун", "Вун", "ГьикI"] }
-        var s = model.suggestions
+        var s = model.suggestions.isEmpty ? model.fallbackSuggestions : model.suggestions
         while s.count < 3 { s.append("") }
         return s
     }

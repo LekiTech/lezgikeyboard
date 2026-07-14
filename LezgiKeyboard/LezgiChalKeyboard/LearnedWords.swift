@@ -2,11 +2,11 @@
 //  LearnedWords.swift
 //  LezgiChalKeyboard
 //
-//  Stages 1-2 of docs/LOCAL_SUGGESTIONS_ROADMAP.md: on-device learned word
-//  frequency with cleanup limits. The store lives in the keyboard extension's
-//  own sandbox container — it is not shared with the containing app and
-//  nothing ever leaves the device. Only individual words are stored, never
-//  sentences.
+//  Stages 1-3 of docs/LOCAL_SUGGESTIONS_ROADMAP.md: on-device learned word
+//  frequency with cleanup limits and bigram context. The store lives in the
+//  keyboard extension's own sandbox container — it is not shared with the
+//  containing app and nothing ever leaves the device. Only individual words
+//  and word pairs are stored, never sentences.
 //
 
 import Foundation
@@ -28,6 +28,8 @@ final class LearnedWords {
     /// Hard cap on stored words; the lowest-ranked rows are pruned past it,
     /// which also keeps learned.sqlite far under the size target.
     private static let maxWords = 5000
+    /// Hard cap on stored word pairs, pruned the same way.
+    private static let maxBigrams = 10000
     /// After this many learn events every counter is halved (integer
     /// division), so one-off words vanish and stale habits fade out.
     private static let decayAfterEvents = 2000
@@ -79,6 +81,13 @@ final class LearnedWords {
                 picked INTEGER NOT NULL DEFAULT 0,
                 last_used INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS user_bigram(
+                prev TEXT NOT NULL,
+                word TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 0,
+                last_used INTEGER NOT NULL,
+                PRIMARY KEY(prev, word)
+            );
             INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', \(Self.schemaVersion));
             INSERT OR IGNORE INTO meta(key, value) VALUES('total_events', 0);
             """)
@@ -106,11 +115,14 @@ final class LearnedWords {
         return true
     }
 
-    /// Records a completed word. `picked` marks a word chosen from the
-    /// suggestion bar, which is a stronger signal than plain typing.
-    func learn(_ word: String, picked: Bool) {
+    /// Records a completed word and, when the preceding word of the same
+    /// sentence is known, the (previous, word) pair. `picked` marks a word
+    /// chosen from the suggestion bar, which is a stronger signal than
+    /// plain typing.
+    func learn(_ word: String, previous: String?, picked: Bool) {
         let w = word.lowercased()
         guard isLearnable(w) else { return }
+        let now = Int64(Date().timeIntervalSince1970)
         var stmt: OpaquePointer?
         let sql = """
             INSERT INTO user_word(word, count, picked, last_used) VALUES(?1, ?2, ?3, ?4)
@@ -118,12 +130,28 @@ final class LearnedWords {
                 count = count + ?2, picked = picked + ?3, last_used = ?4
             """
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
-        defer { sqlite3_finalize(stmt) }
         sqlite3_bind_text(stmt, 1, w, -1, SQLITE_TRANSIENT)
         sqlite3_bind_int(stmt, 2, picked ? 0 : 1)
         sqlite3_bind_int(stmt, 3, picked ? 1 : 0)
-        sqlite3_bind_int64(stmt, 4, Int64(Date().timeIntervalSince1970))
+        sqlite3_bind_int64(stmt, 4, now)
         sqlite3_step(stmt)
+        sqlite3_finalize(stmt)
+
+        if let prev = previous?.lowercased(), isLearnable(prev) {
+            var pairStmt: OpaquePointer?
+            let pairSQL = """
+                INSERT INTO user_bigram(prev, word, count, last_used) VALUES(?1, ?2, 1, ?3)
+                ON CONFLICT(prev, word) DO UPDATE SET
+                    count = count + 1, last_used = ?3
+                """
+            if sqlite3_prepare_v2(db, pairSQL, -1, &pairStmt, nil) == SQLITE_OK {
+                sqlite3_bind_text(pairStmt, 1, prev, -1, SQLITE_TRANSIENT)
+                sqlite3_bind_text(pairStmt, 2, w, -1, SQLITE_TRANSIENT)
+                sqlite3_bind_int64(pairStmt, 3, now)
+                sqlite3_step(pairStmt)
+            }
+            sqlite3_finalize(pairStmt)
+        }
         maintain()
     }
 
@@ -137,6 +165,8 @@ final class LearnedWords {
         if events >= Self.decayAfterEvents {
             exec("UPDATE user_word SET count = count / 2, picked = picked / 2")
             exec("DELETE FROM user_word WHERE count + picked = 0")
+            exec("UPDATE user_bigram SET count = count / 2")
+            exec("DELETE FROM user_bigram WHERE count = 0")
             exec("UPDATE meta SET value = 0 WHERE key = 'total_events'")
             prune()
             exec("VACUUM")
@@ -147,6 +177,7 @@ final class LearnedWords {
 
     /// Deletes every stored word that no longer passes `isLearnable` —
     /// SQL cannot count Lezgi letters, so the check runs in Swift.
+    /// `delete` also drops the pairs referencing each purged word.
     private func purgeUnlearnableWords() {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, "SELECT word FROM user_word", -1, &stmt, nil) == SQLITE_OK else { return }
@@ -161,17 +192,28 @@ final class LearnedWords {
         for word in stale { delete(word) }
     }
 
-    /// Deletes the lowest-ranked rows once the hard cap is exceeded.
+    /// Deletes the lowest-ranked rows once the hard caps are exceeded.
     private func prune() {
         let excess = intValue("SELECT COUNT(*) FROM user_word") - Self.maxWords
-        guard excess > 0 else { return }
-        exec("""
-            DELETE FROM user_word WHERE word IN (
-                SELECT word FROM user_word
-                ORDER BY count + 3 * picked ASC, last_used ASC
-                LIMIT \(excess)
-            )
-            """)
+        if excess > 0 {
+            exec("""
+                DELETE FROM user_word WHERE word IN (
+                    SELECT word FROM user_word
+                    ORDER BY count + 3 * picked ASC, last_used ASC
+                    LIMIT \(excess)
+                )
+                """)
+        }
+        let excessPairs = intValue("SELECT COUNT(*) FROM user_bigram") - Self.maxBigrams
+        if excessPairs > 0 {
+            exec("""
+                DELETE FROM user_bigram WHERE rowid IN (
+                    SELECT rowid FROM user_bigram
+                    ORDER BY count ASC, last_used ASC
+                    LIMIT \(excessPairs)
+                )
+                """)
+        }
     }
 
     private func intValue(_ sql: String) -> Int {
@@ -183,17 +225,22 @@ final class LearnedWords {
     }
 
     /// Learned words matching the prefix, best first. Picked words weigh more
-    /// than merely typed ones, and recently used words get a boost.
-    func suggestions(for prefix: String, limit: Int = 3) -> [String] {
+    /// than merely typed ones, recently used words get a boost, and words
+    /// that have followed `previous` before are boosted by the pair counter
+    /// (Stage 3 — candidates stay the same, bigrams only affect ranking).
+    func suggestions(for prefix: String, previous: String?, limit: Int = 3) -> [String] {
         let p = prefix.lowercased()
         guard !p.isEmpty else { return [] }
         var stmt: OpaquePointer?
         let sql = """
-            SELECT word FROM user_word
-            WHERE word LIKE ?1 ESCAPE '\\' AND count + picked >= ?2
-                  AND LENGTH(word) >= 2
-            ORDER BY (count + 3 * picked) * (CASE WHEN last_used >= ?3 THEN 2 ELSE 1 END) DESC,
-                     last_used DESC
+            SELECT w.word FROM user_word w
+            LEFT JOIN user_bigram b ON b.prev = ?5 AND b.word = w.word
+            WHERE w.word LIKE ?1 ESCAPE '\\' AND w.count + w.picked >= ?2
+                  AND LENGTH(w.word) >= 2
+            ORDER BY (w.count + 3 * w.picked)
+                     * (CASE WHEN w.last_used >= ?3 THEN 2 ELSE 1 END)
+                     * (1 + MIN(IFNULL(b.count, 0), 4)) DESC,
+                     w.last_used DESC
             LIMIT ?4
             """
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
@@ -206,6 +253,7 @@ final class LearnedWords {
         sqlite3_bind_int(stmt, 2, Int32(Self.minUses))
         sqlite3_bind_int64(stmt, 3, Int64((Date().timeIntervalSince1970 - Self.recencyWindow)))
         sqlite3_bind_int(stmt, 4, Int32(limit))
+        sqlite3_bind_text(stmt, 5, previous?.lowercased() ?? "", -1, SQLITE_TRANSIENT)
         var results: [String] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
             if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }
@@ -213,13 +261,18 @@ final class LearnedWords {
         return results
     }
 
-    /// Removes a single learned word (the bundled dictionary is untouched).
+    /// Removes a single learned word and every pair that references it
+    /// (the bundled dictionary is untouched).
     func delete(_ word: String) {
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, "DELETE FROM user_word WHERE word = ?1", -1, &stmt, nil) == SQLITE_OK else { return }
-        defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_text(stmt, 1, word.lowercased(), -1, SQLITE_TRANSIENT)
-        sqlite3_step(stmt)
+        let w = word.lowercased()
+        for sql in ["DELETE FROM user_word WHERE word = ?1",
+                    "DELETE FROM user_bigram WHERE word = ?1 OR prev = ?1"] {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { continue }
+            sqlite3_bind_text(stmt, 1, w, -1, SQLITE_TRANSIENT)
+            sqlite3_step(stmt)
+            sqlite3_finalize(stmt)
+        }
     }
 
     private func exec(_ sql: String) {

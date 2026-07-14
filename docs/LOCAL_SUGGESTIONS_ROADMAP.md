@@ -75,13 +75,13 @@ an API for this.
 
 ## Stage 3 — Local bigrams
 
-- [ ] Store previous word + current word pairs with counts
+- [x] Store previous word + current word pairs with counts
       (`prev`, `word`, `count`, `last_used`)
-- [ ] Use bigrams to rank suggestions by the word before the cursor
+- [x] Use bigrams to rank suggestions by the word before the cursor
       (taken from `documentContextBeforeInput`, which iOS already truncates
       to roughly the current sentence)
-- [ ] Use bigrams only locally — same container, same deletion rules
-- [ ] No full sentences stored — a bigram is two words and a counter,
+- [x] Use bigrams only locally — same container, same deletion rules
+- [x] No full sentences stored — a bigram is two words and a counter,
       nothing more
 
 ## Stage 4 — Next-word suggestions

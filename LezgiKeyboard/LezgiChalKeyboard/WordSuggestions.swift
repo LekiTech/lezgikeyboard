@@ -35,5 +35,21 @@ final class WordSuggestions {
         return results
     }
 
+    /// Random dictionary words for the idle suggestion bar. Queried once per
+    /// keyboard appearance, so the scan over the small dictionary is
+    /// imperceptible.
+    func randomWords(_ count: Int) -> [String] {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT word FROM words ORDER BY RANDOM() LIMIT ?1",
+                                 -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, Int32(count))
+        var results: [String] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }
+        }
+        return results
+    }
+
     deinit { sqlite3_finalize(stmt); sqlite3_close(db) }
 }

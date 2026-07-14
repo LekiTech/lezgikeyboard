@@ -31,6 +31,18 @@ final class KeyboardModel: ObservableObject {
     private let learned = LearnedWords()
     private var lastSpaceTap: Date? = nil
 
+    /// The word being typed, tracked locally: `documentContextBeforeInput`
+    /// lags behind fast typing (it round-trips through the host app), so the
+    /// suggestion tap must not rely on it alone to know how many characters
+    /// to replace. Resynced from the context on every `textDidChange`.
+    private(set) var composedWord = ""
+
+    /// Realigns the local buffer once the host has confirmed the document
+    /// state (cursor moves, field switches, our own edits landing).
+    func syncComposedWord(proxy: UITextDocumentProxy) {
+        composedWord = wordPrefix(proxy: proxy)
+    }
+
     /// Display forms of the current suggestions that came from the learned
     /// store — the only ones long-press deletion applies to.
     private(set) var learnedDisplayWords: Set<String> = []
@@ -39,14 +51,22 @@ final class KeyboardModel: ObservableObject {
     /// The dictionary stores palochka as Latin `I`, learned words keep it as
     /// typed (`ӏ`), so deduplication normalizes both forms. Both kinds follow
     /// the capitalization context of the word being typed.
+    ///
+    /// The prefix is the locally composed word, not the proxy context: the
+    /// context lags behind our own edits, which used to resurface the just
+    /// completed word as if it were still being typed.
     func updateSuggestions(proxy: UITextDocumentProxy) {
-        let prefix = wordPrefix(proxy: proxy)
+        let prefix = composedWord
+        // The idle-bar words follow the same capitalization context as real
+        // suggestions (start of message, after . ! ?, Caps Lock)
+        fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
         guard !prefix.isEmpty else {
             suggestions = []
             learnedDisplayWords = []
             return
         }
-        let learnedWords = learned?.suggestions(for: prefix) ?? []
+        let learnedWords = learned?.suggestions(for: prefix,
+                                                previous: previousWord(proxy: proxy)) ?? []
         var merged = learnedWords
         var seen = Set(merged.map(Self.dedupKey))
         for word in wordDB?.suggestions(for: prefix) ?? []
@@ -57,7 +77,7 @@ final class KeyboardModel: ObservableObject {
         var display: [String] = []
         var learnedSet: Set<String> = []
         for (index, word) in merged.prefix(3).enumerated() {
-            let form = displayForm(word, prefix: prefix)
+            let form = displayForm(word, prefix: prefix, proxy: proxy)
             display.append(form)
             if index < learnedWords.count { learnedSet.insert(form) }
         }
@@ -65,18 +85,25 @@ final class KeyboardModel: ObservableObject {
         learnedDisplayWords = learnedSet
     }
 
-    /// Matches the suggestion's case to the typing context: Caps Lock shows
-    /// the whole word uppercased; a capitalized prefix (sentence start, empty
-    /// field, manual Shift) capitalizes the first letter; otherwise the word
-    /// stays as stored.
-    private func displayForm(_ word: String, prefix: String) -> String {
-        if isCapsLock {
-            return word.uppercased()
+    /// Shared display form for every suggestion type — learned, dictionary,
+    /// and idle-bar fallback words all go through here.
+    ///
+    /// A typed prefix dictates its own case (capitalized prefix → capitalized
+    /// word, fully uppercase prefix → uppercase word); with no prefix the
+    /// sentence context decides (start of message or after `.` `!` `?` →
+    /// capitalized, mid-sentence → as stored); Caps Lock always uppercases.
+    private func displayForm(_ word: String, prefix: String, proxy: UITextDocumentProxy) -> String {
+        if isCapsLock { return word.uppercased() }
+        if prefix.isEmpty {
+            let autocapitalizes = (proxy.autocapitalizationType ?? .sentences) != .none
+            return autocapitalizes && isCursorAtSentenceStart(proxy: proxy)
+                ? word.prefix(1).uppercased() + word.dropFirst()
+                : word
         }
-        if prefix.first?.isUppercase == true || shiftState == .once {
-            return word.prefix(1).uppercased() + word.dropFirst()
-        }
-        return word
+        guard prefix.first?.isUppercase == true else { return word }
+        let allCaps = prefix.count >= 2 && prefix == prefix.uppercased()
+        return allCaps ? word.uppercased()
+                       : word.prefix(1).uppercased() + word.dropFirst()
     }
 
     private static func dedupKey(_ word: String) -> String {
@@ -88,17 +115,40 @@ final class KeyboardModel: ObservableObject {
     /// Punctuation that finishes the word before it, like space and return do.
     private static let wordTerminators: Set<String> = [".", ",", "?", "!", ";", ":"]
 
-    /// Records the word before the cursor as completed. Called before the
-    /// terminator (space / return / punctuation) is inserted.
+    /// Records the word before the cursor as completed, together with the
+    /// word preceding it in the same sentence. Called before the terminator
+    /// (space / return / punctuation) is inserted.
     private func learnCompletedWord(proxy: UITextDocumentProxy) {
         let word = wordPrefix(proxy: proxy)
         guard !word.isEmpty else { return }
-        learned?.learn(word, picked: false)
+        learned?.learn(word, previous: previousWord(proxy: proxy), picked: false)
     }
 
-    /// Records a suggestion chosen from the bar — a stronger signal than typing.
-    func recordPickedSuggestion(_ word: String) {
-        learned?.learn(word, picked: true)
+    /// Records a suggestion chosen from the bar — a stronger signal than
+    /// typing. `previous` must be captured before the prefix is replaced.
+    func recordPickedSuggestion(_ word: String, previous: String?) {
+        learned?.learn(word, previous: previous, picked: true)
+        composedWord = ""
+    }
+
+    /// Empties the bar immediately (used right after a suggestion is
+    /// accepted); the settled context repopulates it via `textDidChange`.
+    func clearSuggestions() {
+        suggestions = []
+        learnedDisplayWords = []
+    }
+
+    /// Random dictionary words shown while the bar has no real suggestions —
+    /// display forms, capitalized by the same rules as real suggestions.
+    @Published var fallbackSuggestions: [String] = []
+
+    /// The raw fallback words as stored in the dictionary.
+    private var fallbackWords: [String] = []
+
+    /// Re-rolls the idle-bar words; called once per keyboard appearance.
+    func refreshFallbackSuggestions(proxy: UITextDocumentProxy) {
+        fallbackWords = wordDB?.randomWords(3) ?? []
+        fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
     }
 
     /// Whether this displayed suggestion came from the learned store.
@@ -113,11 +163,36 @@ final class KeyboardModel: ObservableObject {
         updateSuggestions(proxy: proxy)
     }
 
+    private static let wordSeparators = CharacterSet.whitespacesAndNewlines
+        .union(CharacterSet(charactersIn: ".,!?;:\"'()[]{}—–-"))
+
     func wordPrefix(proxy: UITextDocumentProxy) -> String {
         guard let ctx = proxy.documentContextBeforeInput, !ctx.isEmpty else { return "" }
-        let seps = CharacterSet.whitespacesAndNewlines
-            .union(CharacterSet(charactersIn: ".,!?;:\"'()[]{}—–-"))
-        return ctx.components(separatedBy: seps).last(where: { !$0.isEmpty }) ?? ""
+        // A trailing separator means the last word is already completed:
+        // nothing is being composed, and a suggestion tap must never delete
+        // or replace that completed word.
+        if let scalar = ctx.unicodeScalars.last, Self.wordSeparators.contains(scalar) { return "" }
+        return ctx.components(separatedBy: Self.wordSeparators).last(where: { !$0.isEmpty }) ?? ""
+    }
+
+    /// The completed word right before the word being typed, within the same
+    /// sentence — bigrams never cross a sentence boundary (`.` `!` `?` or a
+    /// new line cut the context first). Uses the same tokenizer as
+    /// `wordPrefix`. Returns nil when the host truncates the context short.
+    func previousWord(proxy: UITextDocumentProxy) -> String? {
+        guard let full = proxy.documentContextBeforeInput, !full.isEmpty else { return nil }
+        var ctx = Substring(full)
+        if let cut = ctx.lastIndex(where: { ".!?\n".contains($0) }) {
+            ctx = ctx[ctx.index(after: cut)...]
+        }
+        let tokens = ctx.components(separatedBy: Self.wordSeparators).filter { !$0.isEmpty }
+        // With a trailing separator the last token is already a completed
+        // word; while typing, the last token is the current prefix itself.
+        let endsWithSeparator = full.unicodeScalars.last.map(Self.wordSeparators.contains) ?? false
+        if endsWithSeparator {
+            return tokens.last
+        }
+        return tokens.count >= 2 ? tokens[tokens.count - 2] : nil
     }
 
     // MARK: - Key handling
@@ -132,6 +207,12 @@ final class KeyboardModel: ObservableObject {
             if Self.wordTerminators.contains(s) { learnCompletedWord(proxy: proxy) }
             let text = isShifted ? LezgiLayout.applyCase(s, capsLock: isCapsLock) : s
             proxy.insertText(text)
+            if s.count == 1, let scalar = s.unicodeScalars.first,
+               Self.wordSeparators.contains(scalar) {
+                composedWord = ""
+            } else {
+                composedWord += text
+            }
             if shiftState == .once { shiftState = .off }
             // Punctuation on the numbers/symbols pages returns to the letters page,
             // like the native keyboard; sentence-ending marks capitalize the next letter
@@ -158,10 +239,12 @@ final class KeyboardModel: ObservableObject {
                 proxy.insertText(" ")
                 lastSpaceTap = Date()
             }
+            composedWord = ""
 
         case .return:
             learnCompletedWord(proxy: proxy)
             proxy.insertText("\n")
+            composedWord = ""
             // A new paragraph starts a new sentence, like the native keyboard
             if shiftState != .capsLock,
                (proxy.autocapitalizationType ?? .sentences) != .none {
@@ -170,6 +253,7 @@ final class KeyboardModel: ObservableObject {
 
         case .backspace:
             proxy.deleteBackward()
+            if !composedWord.isEmpty { composedWord.removeLast() }
 
         case .shift:
             // off → once (single shift) → capsLock (double tap) → off

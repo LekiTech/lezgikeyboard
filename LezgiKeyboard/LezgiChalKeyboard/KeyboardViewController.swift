@@ -20,6 +20,7 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        model.refreshFallbackSuggestions(proxy: textDocumentProxy)
         model.showsKeyboardName = true
         hideKeyboardNameWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
@@ -38,6 +39,7 @@ class KeyboardViewController: UIInputViewController {
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
         model.returnKeyType = textDocumentProxy.returnKeyType ?? .default
+        model.syncComposedWord(proxy: textDocumentProxy)
         model.updateShiftFromContext(proxy: textDocumentProxy)
         model.updateSuggestions(proxy: textDocumentProxy)
     }
@@ -91,13 +93,19 @@ class KeyboardViewController: UIInputViewController {
             },
             onSuggestion: { [weak self] word in
                 guard let self else { return }
+                // The proxy context can lag behind fast typing, so the typed
+                // prefix length comes from whichever source saw more: the
+                // context or the locally tracked composed word.
                 let prefix = self.model.wordPrefix(proxy: self.textDocumentProxy)
-                for _ in prefix { self.textDocumentProxy.deleteBackward() }
+                let previous = self.model.previousWord(proxy: self.textDocumentProxy)
+                let deleteCount = max(prefix.count, self.model.composedWord.count)
+                for _ in 0..<deleteCount { self.textDocumentProxy.deleteBackward() }
                 self.textDocumentProxy.insertText(word + " ")
-                self.model.recordPickedSuggestion(word)
+                self.model.recordPickedSuggestion(word, previous: previous)
                 if self.model.shiftState == .once { self.model.shiftState = .off }
-                self.model.suggestions = []
-                self.model.updateSuggestions(proxy: self.textDocumentProxy)
+                // No recompute here: the proxy context is still catching up
+                // with the insertion and would resurface the accepted word.
+                self.model.clearSuggestions()
             },
             onSuggestionDelete: { [weak self] word in
                 guard let self else { return }
