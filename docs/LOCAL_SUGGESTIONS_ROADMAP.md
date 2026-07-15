@@ -113,8 +113,12 @@ signal, and no fragile workaround is attempted for them.
 
 ## Stage 6 — Optional future local improvements
 
-- [ ] `UILexicon` integration — contact names and the user's text
-      replacements appear in suggestions (available without Full Access)
+- [ ] `UILexicon` integration — **postponed, research-only.** Although it
+      is available without Full Access, it is likely a poor default fit for
+      a Lezgi Cyrillic keyboard: contact names and text replacements are
+      often English/Russian/other languages and would pollute Lezgi
+      suggestions. If ever revisited, it needs separate research and must
+      be optional (off by default), not a default behavior
 - [ ] Ranking weight tuning (context vs. personal frequency vs. base
       dictionary)
 - [ ] Better recency scoring (exponential decay on `last_used` instead of a
