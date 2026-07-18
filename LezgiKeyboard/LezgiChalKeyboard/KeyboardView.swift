@@ -68,10 +68,6 @@ struct KeyboardView: View {
     /// confirm row while set (UIKit alerts cannot be presented from keyboard
     /// extensions — attempting it kills the keyboard).
     @State private var pendingDeleteWord: String? = nil
-    /// Two-step inline confirmation for the full learned-data reset
-    /// (Stage 5): nil — hidden, 1 — first question, 2 — final "are you
-    /// sure". Only the second step actually resets.
-    @State private var resetConfirmStep: Int? = nil
 
     // Emoji page state
     @State private var emojiCurrentSection: Int = 0
@@ -135,7 +131,17 @@ struct KeyboardView: View {
                 )
                 .allowsHitTesting(false)
             }
+
+            // In-keyboard settings panel (gear key), slides up over everything
+            if model.showsSettings {
+                SettingsPanelView(model: model,
+                                  onDeleteWord: onSuggestionDelete,
+                                  onResetAll: onLearnedReset)
+                    .transition(.move(edge: .bottom))
+                    .zIndex(10)
+            }
         }
+        .animation(.easeOut(duration: 0.28), value: model.showsSettings)
         .frame(height: 242, alignment: .top)
         .coordinateSpace(name: "keyboard")
         .ignoresSafeArea()
@@ -145,9 +151,7 @@ struct KeyboardView: View {
 
     private var suggestionBar: some View {
         Group {
-            if let step = resetConfirmStep {
-                resetConfirmBar(step: step)
-            } else if let word = pendingDeleteWord {
+            if let word = pendingDeleteWord {
                 deleteConfirmBar(word: word)
             } else {
                 suggestionCells
@@ -156,7 +160,6 @@ struct KeyboardView: View {
         .frame(height: 36)
         .onChange(of: model.suggestions) { _, _ in
             pendingDeleteWord = nil
-            resetConfirmStep = nil
         }
     }
 
@@ -179,57 +182,6 @@ struct KeyboardView: View {
         .padding(.horizontal, 12)
     }
 
-    /// Two-step inline confirmation for wiping all learned data (Stage 5),
-    /// opened by the gear on the idle bar. Wiping everything is deliberately
-    /// harder than deleting one word: the first «Чӏурун» tap only advances
-    /// to a stronger "are you sure" step, and the second step mirrors the
-    /// button order — the spot just tapped then holds «Ваъ», so a hasty
-    /// double-tap in the same place cancels instead of confirming. Only the
-    /// explicit «Эхь» on the second step resets.
-    private func resetConfirmBar(step: Int) -> some View {
-        HStack(spacing: 12) {
-            if step == 1 {
-                // «стереть выученные слова?» — «нет» / «стереть»
-                Text(verbatim: "Чирнавай гафар чӏурдани?")
-                    .font(.system(size: 15))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Spacer(minLength: 0)
-                confirmPill("Ваъ", emphasized: false) { resetConfirmStep = nil }
-                confirmPill("Чӏурун", emphasized: true) { resetConfirmStep = 2 }
-            } else {
-                // «все слова будут стёрты — согласен?» — «да» / «нет»
-                Text(verbatim: "Вири гафар чӏурда. Рази яни?")
-                    .font(.system(size: 15))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Spacer(minLength: 0)
-                confirmPill("Эхь", emphasized: true) {
-                    resetConfirmStep = nil
-                    onLearnedReset?()
-                }
-                confirmPill("Ваъ", emphasized: false) { resetConfirmStep = nil }
-            }
-        }
-        .padding(.horizontal, 12)
-    }
-
-    /// Pressed highlight matching the suggestion cells but confined to the
-    /// gear button itself, so only the gear visibly reacts.
-    private struct GearButtonStyle: ButtonStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            ZStack {
-                if configuration.isPressed {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.kbLetterKey)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 4)
-                }
-                configuration.label
-            }
-        }
-    }
-
     /// Compact capsule button used by the inline confirmation rows.
     private func confirmPill(_ label: String, emphasized: Bool,
                              action: @escaping () -> Void) -> some View {
@@ -248,14 +200,7 @@ struct KeyboardView: View {
 
     private var suggestionCells: some View {
         let words = paddedSuggestions()
-        // On the idle bar (random fallback words) the gear is a fourth,
-        // clearly separated control after the three cells:
-        // [ cell ] [ cell ] [ cell ] | [ gear ]
-        // The cells and their gesture layer live in their own container, so
-        // cell touch zones, highlights, and the gear can never overlap.
-        let showsGear = model.suggestions.isEmpty
-        return HStack(spacing: 0) {
-            ZStack(alignment: .leading) {
+        return ZStack(alignment: .leading) {
             // Visual layer: highlights + text + dividers, no gestures
             HStack(alignment: .center, spacing: 0) {
                 suggestionCellVisual(words[0], index: 0)
@@ -265,8 +210,8 @@ struct KeyboardView: View {
                 suggestionCellVisual(words[2], index: 2)
             }
 
-            // Gesture layer: transparent rect covering exactly the three
-            // cells, dispatches by x position
+            // Gesture layer: transparent rect covering the three cells,
+            // dispatches by x position
             GeometryReader { geo in
                 Color.white.opacity(0.001)
                     .gesture(
@@ -305,31 +250,8 @@ struct KeyboardView: View {
                             }
                     )
             }
-            }
-
-            if showsGear {
-                suggestionDivider
-                gearButton
-            }
         }
         .frame(height: 36)
-    }
-
-    /// The learned-data reset entry point: a separate key-sized control at
-    /// the right end of the idle bar, split from the cells by the same
-    /// divider they use between themselves. Its pressed highlight is
-    /// confined to the button.
-    private var gearButton: some View {
-        Button {
-            resetConfirmStep = 1
-        } label: {
-            Image(systemName: "gearshape")
-                .font(.system(size: 17, weight: .medium))
-                .foregroundColor(Color(UIColor.secondaryLabel))
-                .frame(width: 56, height: 36)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(GearButtonStyle())
     }
 
     private func suggestionIndex(x: CGFloat, width: CGFloat) -> Int {
@@ -1043,6 +965,11 @@ private struct KeyButton: View {
 
         case .emoji:
             Image(systemName: "face.smiling")
+                .font(.system(size: 20))
+                .foregroundColor(Color(UIColor.label))
+
+        case .settings:
+            Image(systemName: "gearshape")
                 .font(.system(size: 20))
                 .foregroundColor(Color(UIColor.label))
 

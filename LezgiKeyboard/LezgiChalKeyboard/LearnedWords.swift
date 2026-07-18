@@ -376,6 +376,30 @@ final class LearnedWords {
         return results
     }
 
+    /// Number of learned words (settings panel counter).
+    func count() -> Int {
+        intValue("SELECT COUNT(*) FROM user_word")
+    }
+
+    /// Learned words for the settings dictionary list, ranked the same way
+    /// as suggestions (picked > typed, then recency).
+    func topWords(limit: Int) -> [String] {
+        var stmt: OpaquePointer?
+        let sql = """
+            SELECT word FROM user_word
+            ORDER BY count + 3 * picked DESC, last_used DESC
+            LIMIT ?1
+            """
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, Int32(limit))
+        var results: [String] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }
+        }
+        return results
+    }
+
     /// Stage 5: wipes everything learned — words, pairs, and the event
     /// counter. The bundled dictionary is untouched.
     func reset() {

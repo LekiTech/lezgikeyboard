@@ -45,10 +45,11 @@ WhatsApp/Telegram WebP assets, `gen_emoji.py` for `EmojiData.swift`);
 
 | File | Responsibility |
 |---|---|
-| `LezgiKeyboardLayout.swift` | **Single source of truth for the layout**: key rows, long-press callouts (digraphs like `цӏ`, `къ`, `уь`), case rules, labels. Palochka is the Cyrillic `ӏ` (U+04CF) everywhere — typed text and dictionary alike |
+| `LezgiKeyboardLayout.swift` | **Single source of truth for the layout**: key rows (`LayoutVariant`: «ъ» next to the space bar or in the top row), long-press callouts (digraphs like `цӏ`, `къ`, `уь`), case rules, labels. Palochka is the Cyrillic `ӏ` (U+04CF) everywhere — typed text and dictionary alike |
 | `KeyboardViewController.swift` | UIKit bridge (`UIInputViewController`): hosts the SwiftUI view, wires closures, forwards `textDidChange`, owns the `textDocumentProxy` |
 | `KeyboardModel.swift` | The brain: pages/shift state, key handling, composed-word tracking, suggestion generation and capitalization, learning hooks |
 | `KeyboardView.swift` | SwiftUI rendering: key grid, suggestion bar (with inline learned-word delete), emoji page, preview bubbles, callouts |
+| `SettingsPanelView.swift` | Slide-up in-keyboard settings panel (gear key): layout variant, learned-words dictionary with per-word and delete-all, about page |
 | `WordSuggestions.swift` | Read-only prefix lookup + random idle words in the bundled `lezgi_words.sqlite` (20k+ words) |
 | `LearnedWords.swift` | On-device learning store (`learned.sqlite`): word frequencies, bigrams, cleanup — roadmap Stages 1–3 |
 | `EmojiData.swift` | Generated emoji catalog; regenerate with `scripts/gen_emoji.py`, never edit by hand |
@@ -197,31 +198,27 @@ records). There are no hardcoded placeholder words.
 
 ## Resetting learned data (Stage 5)
 
-On the idle bar (the random-fallback state only — never while typing or
-while real suggestions are shown) the gear is a fourth, clearly separated
-control: `[ cell ] [ cell ] [ cell ] | [ gear ]`, split from the cells by
-the same divider they use between themselves. The tap target is a
-56×36pt key-sized button (the icon itself stays small), its pressed
-highlight is confined to the button, and the cells' gesture layer covers
-exactly the three cells — neither side can steal the other's taps.
+Reset lives in the **in-keyboard settings panel** (`SettingsPanelView`),
+off the typing path — the suggestion bar itself has no reset control and
+always shows its three cells.
 
-Because this wipes everything (unlike the per-word delete), confirmation is
-**two-step**, all inline in the bar:
+The gear key in the bottom row (`KeyCap.settings`, between «123» and the
+emoji key) opens the panel: a slide-up SwiftUI overlay inside the fixed
+242pt keyboard with a header (back / title) and stacked pages — home,
+layout variant, learned-words dictionary («Гафарган»), about. The
+dictionary page shows the learned-word count and list
+(`LearnedWords.count()` / `topWords(limit:)`): the `×` on a row deletes
+one word immediately (`delete(_:)`, pairs included; the bundled dictionary
+is never touched), and «Вири чирнавай гафар чӏурун» opens an **in-panel
+confirmation sheet** (dim + card, «Чӏурун» / «Ваъ») — only its explicit
+destructive button calls `LearnedWords.reset()`, which wipes `user_word`,
+`user_bigram`, and the event counter, clears `lastCompletedWord`, and
+refreshes suggestions immediately. No UIKit alerts, no modal presentation —
+everything stays inside the SwiftUI keyboard view.
 
-1. Gear tap → «Чирнавай гафар чӏурдани?» — [Ваъ] [Чӏурун]. «Чӏурун» does
-   **not** reset; it only advances to the second step.
-2. → «Вири гафар чӏурда. Рази яни?» — [Эхь] [Ваъ]. The button order is
-   mirrored between the steps, so the screen spot the user just tapped now
-   holds «Ваъ» — a hasty double-tap in the same place cancels instead of
-   confirming. Only the explicit «Эхь» resets.
-
-Cancel at either step (or simply typing) returns to the idle fallback
-words. Confirming calls `LearnedWords.reset()`, which wipes `user_word`,
-`user_bigram`, and the event counter (the bundled dictionary is untouched),
-clears `lastCompletedWord`, and refreshes the bar so learned and next-word
-suggestions disappear immediately. No UIKit alerts, no modal presentation,
-no hold gestures or progress bars — everything stays inside the SwiftUI
-keyboard view.
+The panel is also where the layout variant lives (`LayoutVariant`,
+persisted in the extension's `UserDefaults`): «ъ» next to the space bar
+(classic, default) or as the 12th key of the top letter row.
 
 ## Privacy / local-first constraints
 
@@ -230,7 +227,7 @@ keyboard view.
 - No server, no analytics, no uploads; everything learned stays in the
   extension sandbox and dies with the app.
 - The user can wipe all learned data at any time from the keyboard itself
-  (gear icon on the idle suggestion bar).
+  (gear key → settings panel → «Гафарган»).
 - Only single words and word pairs are stored — never sentences or message
   text.
 - iOS swaps in the system keyboard for secure (password) fields.

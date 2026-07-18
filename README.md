@@ -26,8 +26,9 @@ Lezgi should feel exactly as natural as typing in Russian or English.
 - Private by design: the keyboard never asks for Full Access and sends
   nothing anywhere. All learning happens on this device only — no network,
   no server, nothing you type is uploaded. Learned words live in the
-  keyboard's own storage, can be reset anytime with the gear icon on the
-  suggestion bar, and are deleted together with the app
+  keyboard's own storage, can be managed and reset anytime from the
+  keyboard's gear key (settings → dictionary), and are deleted together
+  with the app
 
 ## The Stickers
 

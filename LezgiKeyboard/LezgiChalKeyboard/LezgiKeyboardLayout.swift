@@ -22,6 +22,7 @@ enum KeyCap: Equatable {
     case letters    // switch back to alphabet
     case globe      // input mode switch (required for App Store)
     case emoji      // emoji page (Step 4)
+    case settings   // opens the in-keyboard settings panel
     case space
     case `return`
 }
@@ -30,12 +31,18 @@ enum KeyboardPage {
     case letters, numbers, symbols, emoji
 }
 
+/// Where the hard sign «ъ» lives — user-selectable in the settings panel.
+enum LayoutVariant: String {
+    case classic   // ъ in the bottom row next to the space bar (default)
+    case topRow    // ъ as the 12th key of the top letter row
+}
+
 enum LezgiLayout {
 
-    // MARK: - Letter rows (Variant 1: ъ in bottom row, not in top row)
+    // MARK: - Letter rows
     //
     // ↓↓↓  ADD OR REORDER KEYS HERE ONLY  ↓↓↓
-    static let letterRows: [[KeyCap]] = [
+    private static let baseLetterRows: [[KeyCap]] = [
         ["й","ц","у","к","е","н","г","ш","ӏ","з","х"].map { .character($0) },  // 11 keys
         ["ф","ы","в","а","п","р","о","л","д","ж","э"].map { .character($0) },  // 11 keys
         [.shift]
@@ -43,6 +50,15 @@ enum LezgiLayout {
             + [.backspace],
     ]
     // ↑↑↑  -----------------------------------  ↑↑↑
+
+    /// Letter rows for the chosen variant: `.classic` keeps «ъ» in the
+    /// bottom row (added by `KeyboardModel.bottomRow`), `.topRow` appends it
+    /// to the top letter row as a 12th key.
+    static func letterRows(variant: LayoutVariant) -> [[KeyCap]] {
+        var rows = baseLetterRows
+        if variant == .topRow { rows[0].append(.character("ъ")) }
+        return rows
+    }
 
     // MARK: - Number page ("123") — standard iOS set
     static let numberRows: [[KeyCap]] = [
@@ -100,6 +116,7 @@ enum LezgiLayout {
         case .letters:          return "АБВ"
         case .globe:            return "🌐"
         case .emoji:            return "😀"
+        case .settings:         return ""    // gear icon, rendered by KeyButton
         case .space:            return "Ара"
         case .return:           return "Ракъун"
         }
@@ -111,8 +128,9 @@ enum LezgiLayout {
         switch cap {
         case .character:                    return 1.0
         case .shift, .backspace:            return 1.0
-        case .globe, .emoji:                return 1.2
-        case .numbers, .symbols, .letters:  return 1.4
+        // The «123» / gear / emoji cluster must be exactly equal-sized
+        case .settings, .globe, .emoji,
+             .numbers, .symbols, .letters:  return 1.2
         case .return:                       return 1.8
         case .space:                        return 4.5
         }
@@ -124,7 +142,7 @@ enum LezgiLayout {
         switch cap {
         case .character:                   return 22
         case .shift, .backspace,
-             .globe, .emoji:               return 20
+             .globe, .emoji, .settings:    return 20
         case .space:                       return 13
         case .return:                      return 13
         case .numbers, .symbols, .letters: return 18

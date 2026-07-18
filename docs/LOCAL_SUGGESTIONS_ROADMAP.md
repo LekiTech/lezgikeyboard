@@ -99,13 +99,11 @@ signal, and no fragile workaround is attempted for them.
 - [x] Add a way to reset learned suggestions from inside the keyboard
       (learned data lives in the keyboard's sandbox, so the reset control
       must be in the keyboard itself — the containing app cannot reach it
-      without Full Access). Implemented as a gear icon on the idle
-      suggestion bar (visible only when random fallback words are shown)
-      that opens a two-step inline Lezgi confirmation: the first «Чӏурун»
-      only advances to a stronger "are you sure" step with mirrored button
-      order (a hasty double-tap lands on cancel), and only the explicit
-      «Эхь» wipes learned words and bigrams and refreshes the bar
-      immediately
+      without Full Access). Implemented as a gear key in the bottom row
+      that opens the in-keyboard settings panel: its «Гафарган» page lists
+      the learned words with per-word deletion, and «Вири чирнавай гафар
+      чӏурун» wipes everything behind an in-panel confirmation sheet —
+      suggestions refresh immediately
 - [x] Document the privacy behavior clearly in the app and README: what is
       stored, where it lives, that deleting the app deletes it, and how to
       reset it manually (README keyboard section, the app's privacy feature

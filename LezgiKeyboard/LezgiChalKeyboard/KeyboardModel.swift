@@ -27,6 +27,19 @@ final class KeyboardModel: ObservableObject {
     @Published var isSpaceCursorMode: Bool = false
     /// Keyboard name shown centered on the spacebar right after the keyboard appears.
     @Published var showsKeyboardName: Bool = false
+    /// The in-keyboard settings panel (opened by the gear key) is visible.
+    @Published var showsSettings: Bool = false
+    /// Where the hard sign «ъ» lives; user-selectable, persisted in the
+    /// extension's own UserDefaults.
+    @Published var layoutVariant: LayoutVariant =
+        LayoutVariant(rawValue: UserDefaults.standard.string(forKey: KeyboardModel.layoutVariantKey) ?? "") ?? .classic
+
+    private static let layoutVariantKey = "layoutVariant"
+
+    func setLayoutVariant(_ variant: LayoutVariant) {
+        layoutVariant = variant
+        UserDefaults.standard.set(variant.rawValue, forKey: Self.layoutVariantKey)
+    }
 
     var isShifted: Bool { shiftState != .off }
     var isCapsLock: Bool { shiftState == .capsLock }
@@ -200,11 +213,23 @@ final class KeyboardModel: ObservableObject {
     }
 
     /// Stage 5: wipes the whole learned store (words and pairs) and
-    /// refreshes the bar. Triggered from the idle suggestion bar.
+    /// refreshes the bar. Triggered from the settings panel.
     func resetLearnedWords(proxy: UITextDocumentProxy) {
         learned?.reset()
         lastCompletedWord = nil
         updateSuggestions(proxy: proxy)
+    }
+
+    // MARK: - Settings panel data
+
+    /// Number of learned words, for the settings dictionary counter.
+    func learnedWordCount() -> Int {
+        learned?.count() ?? 0
+    }
+
+    /// Learned words for the settings dictionary list, best first.
+    func learnedTopWords(limit: Int = 500) -> [String] {
+        learned?.topWords(limit: limit) ?? []
     }
 
     private static let wordSeparators = CharacterSet.whitespacesAndNewlines
@@ -315,6 +340,7 @@ final class KeyboardModel: ObservableObject {
         case .symbols:  page = .symbols
         case .letters:  page = .letters
         case .emoji:    page = .emoji
+        case .settings: showsSettings = true
         case .globe:    break
         }
     }
@@ -411,7 +437,7 @@ final class KeyboardModel: ObservableObject {
     func rows(needsGlobe: Bool) -> [[KeyCap]] {
         let main: [[KeyCap]]
         switch page {
-        case .letters: main = LezgiLayout.letterRows
+        case .letters: main = LezgiLayout.letterRows(variant: layoutVariant)
         case .numbers: main = LezgiLayout.numberRows
         case .symbols: main = LezgiLayout.symbolRows
         case .emoji:   return []
@@ -422,9 +448,14 @@ final class KeyboardModel: ObservableObject {
     private func bottomRow(needsGlobe: Bool) -> [KeyCap] {
         switch page {
         case .letters:
-            var row: [KeyCap] = [.numbers, .emoji]
+            // The gear opens the in-keyboard settings panel; «ъ» sits next
+            // to the space bar in the classic variant and moves to the top
+            // letter row in the topRow variant
+            var row: [KeyCap] = [.numbers, .settings, .emoji]
             if needsGlobe { row.append(.globe) }
-            row += [.space, .character("ъ"), .return]
+            row.append(.space)
+            if layoutVariant == .classic { row.append(.character("ъ")) }
+            row.append(.return)
             return row
         case .numbers, .symbols:
             var row: [KeyCap] = [.letters]
