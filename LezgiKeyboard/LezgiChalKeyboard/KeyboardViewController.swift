@@ -105,8 +105,10 @@ class KeyboardViewController: UIInputViewController {
                 let previous = self.model.previousWord(proxy: self.textDocumentProxy)
                 let deleteCount = max(prefix.count, self.model.composedWord.count)
                 for _ in 0..<deleteCount { self.textDocumentProxy.deleteBackward() }
-                self.textDocumentProxy.insertText(word + " ")
-                self.model.recordPickedSuggestion(word, previous: previous)
+                let addsSpace = self.model.settings.autoSpaceAfterSuggestion
+                self.textDocumentProxy.insertText(addsSpace ? word + " " : word)
+                self.model.recordPickedSuggestion(word, previous: previous,
+                                                  insertedSpace: addsSpace)
                 if self.model.shiftState == .once { self.model.shiftState = .off }
                 // Hosts do not send textDidChange for the keyboard's own
                 // edits, so refresh here: composedWord is already cleared,

@@ -732,8 +732,9 @@ private struct RowView: View {
         activeCap = key.cap
         onPress(key.cap, key.frame)
 
-        // Long-press on space enters cursor mode: dragging moves the insertion point
-        if case .space = key.cap {
+        // Long-press on space enters cursor mode: dragging moves the insertion
+        // point (user-disableable in the settings panel)
+        if case .space = key.cap, model.settings.spaceCursor {
             spaceLastX = value.location.x
             spaceLastY = value.location.y
             let work = DispatchWorkItem {
@@ -771,7 +772,9 @@ private struct RowView: View {
                 onLongPress(frame, opts)
             }
             longPressTimer = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
+            // The callout delay is user-adjustable in the settings panel
+            DispatchQueue.main.asyncAfter(deadline: .now() + model.settings.calloutDelay.seconds,
+                                          execute: work)
         }
 
         // Long-press on the gear: quick layout switch (a regular tap still
@@ -1090,7 +1093,9 @@ private struct KeyButton: View {
                     .foregroundColor(Color(UIColor.systemGray2))
                     .padding(.trailing, 6)
                     .padding(.bottom, 4)
-                    .opacity(model.showsKeyboardName ? 0 : 1)
+                    // Hidden while the keyboard name flashes, or permanently
+                    // via the settings panel
+                    .opacity(model.showsKeyboardName || !model.settings.spaceLabel ? 0 : 1)
                 if model.showsKeyboardName {
                     // Keyboard name shown centered right after the keyboard appears
                     Text("Лезги чӏал")

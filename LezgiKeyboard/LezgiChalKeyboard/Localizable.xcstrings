@@ -1,0 +1,276 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    "after 1 use" : {
+      "comment" : "Learning speed explanation, appended after «1 сефер»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "after 1 use"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "после 1 использования"
+          }
+        }
+      }
+    },
+    "after 3 uses" : {
+      "comment" : "Learning speed explanation, appended after «3 сефер»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "after 3 uses"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "после 3 использований"
+          }
+        }
+      }
+    },
+    "after 5 uses" : {
+      "comment" : "Learning speed explanation, appended after «5 сефер»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "after 5 uses"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "после 5 использований"
+          }
+        }
+      }
+    },
+    "Cursor control with the space bar" : {
+      "comment" : "Settings subtitle under «Арадалди курсор»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cursor control with the space bar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Управление курсором пробелом"
+          }
+        }
+      }
+    },
+    "Double space types a period" : {
+      "comment" : "Settings subtitle under «Кьве ара — нукьта»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double space types a period"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Двойной пробел ставит точку"
+          }
+        }
+      }
+    },
+    "learning" : {
+      "comment" : "Section label explanation after «Чирун»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "learning"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "обучение"
+          }
+        }
+      }
+    },
+    "long delay" : {
+      "comment" : "Callout delay explanation, appended after «0,45 с»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "long delay"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "долгая задержка"
+          }
+        }
+      }
+    },
+    "long press" : {
+      "comment" : "Section label explanation after «Алава гьарфар»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "long press"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "долгое нажатие"
+          }
+        }
+      }
+    },
+    "Next-word suggestion" : {
+      "comment" : "Settings subtitle under «Къведай гафунин теклиф»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next-word suggestion"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подсказка следующего слова"
+          }
+        }
+      }
+    },
+    "normal delay" : {
+      "comment" : "Callout delay explanation, appended after «0,3 с»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "normal delay"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "обычная задержка"
+          }
+        }
+      }
+    },
+    "short delay" : {
+      "comment" : "Callout delay explanation, appended after «0,2 с»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "short delay"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "короткая задержка"
+          }
+        }
+      }
+    },
+    "Show «лезг» on the space bar" : {
+      "comment" : "Settings subtitle under «Арадал «лезг»»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show «лезг» on the space bar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать «лезг» на пробеле"
+          }
+        }
+      }
+    },
+    "Space after accepting a suggestion" : {
+      "comment" : "Settings subtitle under «Теклифдилай гуьгъуьниз ара»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Space after accepting a suggestion"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пробел после выбора подсказки"
+          }
+        }
+      }
+    },
+    "suggestions" : {
+      "comment" : "Section label explanation after «Теклифар»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "suggestions"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "подсказки"
+          }
+        }
+      }
+    },
+    "Word suggestions" : {
+      "comment" : "Settings subtitle under «Гафарин теклифар»",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Word suggestions"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подсказки слов"
+          }
+        }
+      }
+    },
+    "АБВ" : {
+      "comment" : "A label for the first row of emoji keys.",
+      "isCommentAutoGenerated" : true
+    },
+    "ЛЕЗГ" : {
+      "comment" : "A label for the space key.",
+      "isCommentAutoGenerated" : true
+    },
+    "Лезги чӏал" : {
+      "comment" : "The name of the keyboard.",
+      "isCommentAutoGenerated" : true
+    }
+  },
+  "version" : "1.1"
+}

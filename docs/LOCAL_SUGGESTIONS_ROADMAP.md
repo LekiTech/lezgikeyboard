@@ -42,7 +42,9 @@ replaces custom keyboards with the system one, so passwords are never seen.
       ones
 - [x] Words are stored from the first use but appear in suggestions only
       after 3 confirmations (typed or picked) — a typo made once or twice
-      never surfaces
+      never surfaces. Since the settings panel's input page the threshold
+      is user-adjustable (fast 1 / normal 3 / conservative 5); only the
+      threshold changes, never the learning itself
 - [x] Suggestions follow the capitalization context (sentence start, empty
       field, Shift, Caps Lock) — consistently for learned and dictionary words
 - [x] Long-press on a learned suggestion offers to remove it from

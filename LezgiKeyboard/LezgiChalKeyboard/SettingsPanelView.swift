@@ -52,7 +52,7 @@ struct SettingsPanelView: View {
     var onResetAll: (() -> Void)? = nil
 
     private enum Page {
-        case home, layout, dictionary, about
+        case home, layout, input, dictionary, about
     }
 
     @State private var stack: [Page] = [.home]
@@ -77,6 +77,7 @@ struct SettingsPanelView: View {
                         switch page {
                         case .home:       homePage
                         case .layout:     layoutPage
+                        case .input:      inputPage
                         case .dictionary: dictionaryPage
                         case .about:      aboutPage
                         }
@@ -99,6 +100,7 @@ struct SettingsPanelView: View {
         switch page {
         case .home:       return ""
         case .layout:     return "Раскладка"
+        case .input:      return "Кхьин"
         case .dictionary: return "Гафарган"
         case .about:      return "Клавиатурадикай"
         }
@@ -157,6 +159,9 @@ struct SettingsPanelView: View {
                        value: model.layoutVariant == .classic ? "Ъ — арадин къвалаг" : "Ъ — вини жергеда",
                        page: .layout)
                 divider
+                navRow(icon: "slider.horizontal.3", title: "Кхьин",
+                       value: nil, page: .input)
+                divider
                 navRow(icon: "text.book.closed", title: "Гафарган",
                        value: "\(wordCount)", page: .dictionary)
             }
@@ -184,6 +189,86 @@ struct SettingsPanelView: View {
                     model.setLayoutVariant(.topRow)
                 }
             }
+        }
+    }
+
+    /// Input behavior (Phase 2): suggestions, key behaviors, learning speed,
+    /// and the long-press callout delay. Only features the keyboard already
+    /// has — every control maps 1:1 to a `KeyboardSettings` field.
+    private var inputPage: some View {
+        Group {
+            // Lezgi titles stay primary and are never localized; the small
+            // explanatory subtitles come from the extension's string catalog
+            // and follow the user's system language (en fallback)
+            sectionLabel("Теклифар — " + String(localized: "suggestions"))
+            group {
+                toggleRow(title: "Гафарин теклифар",
+                          subtitle: String(localized: "Word suggestions"),
+                          binding: binding(\.wordSuggestions))
+                divider
+                toggleRow(title: "Къведай гафунин теклиф",
+                          subtitle: String(localized: "Next-word suggestion"),
+                          binding: binding(\.nextWordSuggestions))
+                divider
+                toggleRow(title: "Теклифдилай гуьгъуьниз ара",
+                          subtitle: String(localized: "Space after accepting a suggestion"),
+                          binding: binding(\.autoSpaceAfterSuggestion))
+            }
+
+            sectionLabel("Клавишар")
+            group {
+                toggleRow(title: "Кьве ара — нукьта",
+                          subtitle: String(localized: "Double space types a period"),
+                          binding: binding(\.doubleSpacePeriod))
+                divider
+                toggleRow(title: "Арадалди курсор",
+                          subtitle: String(localized: "Cursor control with the space bar"),
+                          binding: binding(\.spaceCursor))
+                divider
+                toggleRow(title: "Арадал «лезг»",
+                          subtitle: String(localized: "Show «лезг» on the space bar"),
+                          binding: binding(\.spaceLabel))
+            }
+
+            sectionLabel("Чирун — " + String(localized: "learning"))
+            group {
+                learnSpeedRow(.fast, title: "Фад",
+                              subtitle: "1 сефер · " + String(localized: "after 1 use"))
+                divider
+                learnSpeedRow(.normal, title: "Адетдин",
+                              subtitle: "3 сефер · " + String(localized: "after 3 uses"))
+                divider
+                learnSpeedRow(.conservative, title: "Яваш",
+                              subtitle: "5 сефер · " + String(localized: "after 5 uses"))
+            }
+
+            sectionLabel("Алава гьарфар (ӏ, кь, къ…) — " + String(localized: "long press"))
+            group {
+                calloutDelayRow(.short, title: "Куьруь ял",
+                                subtitle: "0,2 с · " + String(localized: "short delay"))
+                divider
+                calloutDelayRow(.normal, title: "Адетдин ял",
+                                subtitle: "0,3 с · " + String(localized: "normal delay"))
+                divider
+                calloutDelayRow(.long, title: "Яргъи ял",
+                                subtitle: "0,45 с · " + String(localized: "long delay"))
+            }
+        }
+    }
+
+    private func learnSpeedRow(_ speed: KeyboardSettings.LearnSpeed,
+                               title: String, subtitle: String) -> some View {
+        radioRow(title: title, subtitle: subtitle,
+                 selected: model.settings.learnSpeed == speed) {
+            model.updateSettings { $0.learnSpeed = speed }
+        }
+    }
+
+    private func calloutDelayRow(_ delay: KeyboardSettings.CalloutDelay,
+                                 title: String, subtitle: String) -> some View {
+        radioRow(title: title, subtitle: subtitle,
+                 selected: model.settings.calloutDelay == delay) {
+            model.updateSettings { $0.calloutDelay = delay }
         }
     }
 
@@ -374,6 +459,34 @@ struct SettingsPanelView: View {
             .frame(minHeight: 46)
             .contentShape(Rectangle())
         }
+    }
+
+    private func binding(_ keyPath: WritableKeyPath<KeyboardSettings, Bool>) -> Binding<Bool> {
+        Binding(get: { model.settings[keyPath: keyPath] },
+                set: { newValue in model.updateSettings { $0[keyPath: keyPath] = newValue } })
+    }
+
+    private func toggleRow(title: String, subtitle: String? = nil,
+                           binding: Binding<Bool>) -> some View {
+        HStack(spacing: 11) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: title)
+                    .font(.system(size: 15))
+                    .foregroundColor(Color(UIColor.label))
+                if let subtitle {
+                    Text(verbatim: subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(UIColor.secondaryLabel))
+                }
+            }
+            Spacer(minLength: 8)
+            Toggle("", isOn: binding)
+                .labelsHidden()
+                .tint(.spAccent)
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 8)
+        .frame(minHeight: 46)
     }
 
     private func radioRow(title: String, subtitle: String, selected: Bool,

@@ -22,7 +22,9 @@ final class LearnedWords {
     private static let maxWordLength = 64
     /// A word must be confirmed this many times (typed or picked) before it
     /// starts being suggested, so a typo made once or twice never surfaces.
-    private static let minUses = 3
+    /// User-adjustable via the settings panel's learning speed (1/3/5);
+    /// only this visibility threshold changes, never the learning itself.
+    var minVisibleUses = KeyboardSettings.LearnSpeed.normal.minUses
     /// A pair must be seen this many times before it produces next-word
     /// suggestions, so a one-off combination never surfaces.
     private static let minPairUses = 2
@@ -365,7 +367,7 @@ final class LearnedWords {
             .replacingOccurrences(of: "%", with: "\\%")
             .replacingOccurrences(of: "_", with: "\\_") + "%"
         sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT)
-        sqlite3_bind_int(stmt, 2, Int32(Self.minUses))
+        sqlite3_bind_int(stmt, 2, Int32(minVisibleUses))
         sqlite3_bind_int64(stmt, 3, Int64((Date().timeIntervalSince1970 - Self.recencyWindow)))
         sqlite3_bind_int(stmt, 4, Int32(limit))
         sqlite3_bind_text(stmt, 5, previous?.lowercased() ?? "", -1, SQLITE_TRANSIENT)

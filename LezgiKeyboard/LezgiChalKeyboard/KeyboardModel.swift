@@ -41,6 +41,27 @@ final class KeyboardModel: ObservableObject {
         UserDefaults.standard.set(variant.rawValue, forKey: Self.layoutVariantKey)
     }
 
+    /// User-adjustable behavior (settings panel, Phase 2); defaults keep the
+    /// pre-settings behavior.
+    @Published var settings = KeyboardSettings.load()
+
+    init() {
+        learned?.minVisibleUses = settings.learnSpeed.minUses
+    }
+
+    /// Applies and persists a settings change; effects that have model-side
+    /// state are synced here so the change is felt immediately.
+    func updateSettings(_ transform: (inout KeyboardSettings) -> Void) {
+        transform(&settings)
+        settings.save()
+        learned?.minVisibleUses = settings.learnSpeed.minUses
+        if !settings.wordSuggestions {
+            suggestions = []
+            learnedDisplayWords = []
+            fallbackSuggestions = []
+        }
+    }
+
     var isShifted: Bool { shiftState != .off }
     var isCapsLock: Bool { shiftState == .capsLock }
 
@@ -95,6 +116,14 @@ final class KeyboardModel: ObservableObject {
     /// context lags behind our own edits, which used to resurface the just
     /// completed word as if it were still being typed.
     func updateSuggestions(proxy: UITextDocumentProxy) {
+        // Master switch: with word suggestions off the bar shows nothing
+        // (learning itself continues — it is a separate concern)
+        guard settings.wordSuggestions else {
+            suggestions = []
+            learnedDisplayWords = []
+            fallbackSuggestions = []
+            return
+        }
         let prefix = composedWord
         // The idle-bar words follow the same capitalization context as real
         // suggestions (start of message, after . ! ?, Caps Lock)
@@ -104,7 +133,9 @@ final class KeyboardModel: ObservableObject {
             // the learned bigrams of the last completed word. When there is
             // no last word (sentence start) or no confident pairs, the bar
             // falls back to the random dictionary words above.
-            let nextWords = lastCompletedWord.flatMap { learned?.nextWords(after: $0) } ?? []
+            let nextWords = settings.nextWordSuggestions
+                ? (lastCompletedWord.flatMap { learned?.nextWords(after: $0) } ?? [])
+                : []
             var display: [String] = []
             var learnedSet: Set<String> = []
             for word in nextWords {
@@ -179,12 +210,17 @@ final class KeyboardModel: ObservableObject {
 
     /// Records a suggestion chosen from the bar — a stronger signal than
     /// typing. `previous` must be captured before the prefix is replaced.
-    /// The accepted word is inserted with a trailing space, so it becomes
-    /// the completed word the next-word suggestions chain from.
-    func recordPickedSuggestion(_ word: String, previous: String?) {
+    /// With the trailing space inserted the word is completed and next-word
+    /// suggestions chain from it; without it (auto-space setting off) the
+    /// word stays the composed prefix the user can keep extending.
+    func recordPickedSuggestion(_ word: String, previous: String?, insertedSpace: Bool) {
         learned?.learn(word, previous: previous, picked: true)
-        composedWord = ""
-        lastCompletedWord = word
+        if insertedSpace {
+            composedWord = ""
+            lastCompletedWord = word
+        } else {
+            composedWord = word
+        }
     }
 
     /// Random dictionary words shown while the bar has no real suggestions —
@@ -196,6 +232,11 @@ final class KeyboardModel: ObservableObject {
 
     /// Re-rolls the idle-bar words; called once per keyboard appearance.
     func refreshFallbackSuggestions(proxy: UITextDocumentProxy) {
+        guard settings.wordSuggestions else {
+            fallbackWords = []
+            fallbackSuggestions = []
+            return
+        }
         fallbackWords = wordDB?.randomWords(3) ?? []
         fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
     }
@@ -297,7 +338,8 @@ final class KeyboardModel: ObservableObject {
 
         case .space:
             // Quick double space after a word turns into ". " with a capital next
-            if let last = lastSpaceTap, Date().timeIntervalSince(last) < 0.35,
+            if settings.doubleSpacePeriod,
+               let last = lastSpaceTap, Date().timeIntervalSince(last) < 0.35,
                let before = proxy.documentContextBeforeInput,
                before.hasSuffix(" "), before.count >= 2,
                let prev = before.dropLast().last, prev.isLetter || prev.isNumber {

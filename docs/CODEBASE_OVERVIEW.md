@@ -49,7 +49,8 @@ WhatsApp/Telegram WebP assets, `gen_emoji.py` for `EmojiData.swift`);
 | `KeyboardViewController.swift` | UIKit bridge (`UIInputViewController`): hosts the SwiftUI view, wires closures, forwards `textDidChange`, owns the `textDocumentProxy` |
 | `KeyboardModel.swift` | The brain: pages/shift state, key handling, composed-word tracking, suggestion generation and capitalization, learning hooks |
 | `KeyboardView.swift` | SwiftUI rendering: key grid, suggestion bar (with inline learned-word delete), emoji page, preview bubbles, callouts |
-| `SettingsPanelView.swift` | Slide-up in-keyboard settings panel (gear key): layout variant, learned-words dictionary with per-word and delete-all, about page |
+| `SettingsPanelView.swift` | Slide-up in-keyboard settings panel (gear key): layout variant, input behavior page, learned-words dictionary with per-word and delete-all, about page |
+| `KeyboardSettings.swift` | User-adjustable behavior (Phase 2): suggestion toggles, key behaviors, learning speed, callout delay. Loaded from / saved to the extension's `UserDefaults`; defaults reproduce the pre-settings behavior |
 | `WordSuggestions.swift` | Read-only prefix lookup + random idle words in the bundled `lezgi_words.sqlite` (20k+ words) |
 | `LearnedWords.swift` | On-device learning store (`learned.sqlite`): word frequencies, bigrams, cleanup — roadmap Stages 1–3 |
 | `EmojiData.swift` | Generated emoji catalog; regenerate with `scripts/gen_emoji.py`, never edit by hand |
@@ -123,8 +124,9 @@ keyboard and iOS switches to another one.
   characters. Bumping `filtersVersion` purges old records that no longer
   pass.
 - Visibility threshold: a word appears in suggestions only after
-  **3 confirmations** (`count + picked >= 3`), so a typo made once or twice
-  never surfaces.
+  **3 confirmations** by default (`count + picked >= minVisibleUses`), so a
+  typo made once or twice never surfaces. The threshold is user-adjustable
+  via the settings panel's learning speed (1 / 3 / 5).
 - Ranking score: `(count + 3·picked) × 2 if used in the last 14 days ×
   (1 + min(bigram count, 4))`.
 - Cleanup: every 2000 learn events all counters are halved (integer
@@ -218,7 +220,33 @@ everything stays inside the SwiftUI keyboard view.
 
 The panel is also where the layout variant lives (`LayoutVariant`,
 persisted in the extension's `UserDefaults`): «ъ» next to the space bar
-(classic, default) or as the 12th key of the top letter row. A
+(classic, default) or as the 12th key of the top letter row.
+
+### Input settings («Кхьин», Phase 2)
+
+The panel's input page exposes `KeyboardSettings` — behavior toggles only,
+no new features. Titles are Lezgi (never localized); each control carries a
+small explanatory subtitle localized via the extension's own
+`Localizable.xcstrings` (ru + en, English fallback for other system
+languages — the same String Catalog approach the container app uses). All
+values persist in the extension's `UserDefaults` and default to the
+pre-settings behavior:
+
+- **Suggestions**: word suggestions master switch (off ⇒ the bar shows
+  nothing at all, including fallback words; learning itself continues),
+  next-word suggestions, and the automatic trailing space after accepting
+  a suggestion (off ⇒ the accepted word stays the composed prefix).
+- **Keys**: double-space → period, spacebar cursor/trackpad mode, the
+  «ЛЕЗГ» label on the space bar.
+- **Learning speed**: sets `LearnedWords.minVisibleUses` — the visibility
+  threshold only (fast 1 / normal 3 / conservative 5); the learning
+  algorithm itself never changes.
+- **Long press**: the character-callout delay (0.2 / 0.3 / 0.45 s); the
+  gear key's own long-press stays fixed.
+
+`KeyboardModel.updateSettings` applies a change, saves it, and syncs
+model-side state (threshold, clearing the bar when suggestions turn off),
+so every control takes effect immediately. A
 **long press on the gear key** additionally opens a quick layout menu
 above the key (`LayoutMenuBubble`): a small vertical card with the two
 variants (title + subtitle, the current one marked by its accent-tinted
