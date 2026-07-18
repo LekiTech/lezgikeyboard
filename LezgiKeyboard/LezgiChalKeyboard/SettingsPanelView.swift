@@ -154,7 +154,7 @@ struct SettingsPanelView: View {
 
             group {
                 navRow(icon: "keyboard", title: "Раскладка",
-                       value: model.layoutVariant == .classic ? "Ъ — ара патав" : "Ъ — вини жергеда",
+                       value: model.layoutVariant == .classic ? "Ъ — арадин къвалаг" : "Ъ — вини жергеда",
                        page: .layout)
                 divider
                 navRow(icon: "text.book.closed", title: "Гафарган",
@@ -172,14 +172,14 @@ struct SettingsPanelView: View {
         Group {
             sectionLabel("Кӏеви лишандин («ъ») чка")
             group {
-                radioRow(title: "Ара-клавишдин патав",
+                radioRow(title: "Арадин къвалаг",
                          subtitle: "Вини жергеда 11 клавиша",
                          selected: model.layoutVariant == .classic) {
                     model.setLayoutVariant(.classic)
                 }
                 divider
                 radioRow(title: "Вини жергеда",
-                         subtitle: "«ъ» — «х»-дин патав",
+                         subtitle: "«ъ» — «х»-дин къвалаг",
                          selected: model.layoutVariant == .topRow) {
                     model.setLayoutVariant(.topRow)
                 }
@@ -284,17 +284,12 @@ struct SettingsPanelView: View {
                 .onTapGesture { showsDeleteAllSheet = false }
 
             VStack(spacing: 0) {
-                VStack(spacing: 4) {
-                    Text(verbatim: "Вири чирнавай гафар чӏурдани?")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(Color(UIColor.label))
-                    Text(verbatim: "Клавиатура забудет выученные слова и их сочетания. Отменить нельзя.")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(UIColor.secondaryLabel))
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                Text(verbatim: "Вири чирнавай гафар чӏурдани?")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(Color(UIColor.label))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
 
                 Divider().background(Color.spSep)
                 Button {

@@ -218,7 +218,13 @@ everything stays inside the SwiftUI keyboard view.
 
 The panel is also where the layout variant lives (`LayoutVariant`,
 persisted in the extension's `UserDefaults`): «ъ» next to the space bar
-(classic, default) or as the 12th key of the top letter row.
+(classic, default) or as the 12th key of the top letter row. A
+**long press on the gear key** additionally opens a quick layout menu
+above the key (`LayoutMenuBubble`): a small vertical card with the two
+variants (title + subtitle, the current one marked by its accent-tinted
+title). Dragging highlights the row under the finger; releasing over a
+row applies it, releasing outside the card changes nothing. A regular
+tap still opens the full panel.
 
 ## Privacy / local-first constraints
 

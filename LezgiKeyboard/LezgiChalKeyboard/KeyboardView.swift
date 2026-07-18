@@ -89,6 +89,14 @@ struct KeyboardView: View {
     @State private var calloutBubbleLeftX: CGFloat = 0
     @State private var isShowingCallout: Bool = false
 
+    // Quick layout menu (long-press on the gear key)
+    @State private var isShowingLayoutMenu = false
+    @State private var layoutMenuFrame: CGRect = .zero   // the gear key frame
+    @State private var layoutMenuRect: CGRect = .zero    // the menu card frame
+    /// Row currently under the finger; nil when the finger is outside the
+    /// menu, so releasing there changes nothing.
+    @State private var layoutMenuSelectedIndex: Int? = nil
+
     private let calloutOptionWidth: CGFloat = 44
 
     var body: some View {
@@ -130,6 +138,14 @@ struct KeyboardView: View {
                     isCapsLock: model.isCapsLock
                 )
                 .allowsHitTesting(false)
+            }
+
+            // Quick layout menu above the gear key (long press)
+            if isShowingLayoutMenu {
+                LayoutMenuBubble(highlightedIndex: layoutMenuSelectedIndex,
+                                 currentVariant: model.layoutVariant,
+                                 keyFrame: layoutMenuFrame)
+                    .allowsHitTesting(false)
             }
 
             // In-keyboard settings panel (gear key), slides up over everything
@@ -533,12 +549,39 @@ struct KeyboardView: View {
                 calloutSelectedIndex = max(0, min(options.count - 1, Int(initialLocal / calloutOptionWidth)))
                 isShowingCallout = true
             },
-            onDragMoved: { dragX in
-                let localX = dragX - calloutBubbleLeftX
-                let idx = Int(localX / calloutOptionWidth)
-                calloutSelectedIndex = max(0, min(calloutOptions.count - 1, idx))
+            onSettingsLongPress: { frame in
+                pressedCap = nil
+                layoutMenuFrame = frame
+                layoutMenuRect = LayoutMenuBubble.menuFrame(keyFrame: frame)
+                // Nothing starts highlighted; releasing without entering the
+                // menu changes nothing
+                layoutMenuSelectedIndex = nil
+                isShowingLayoutMenu = true
+            },
+            onDragMoved: { point in
+                if isShowingLayoutMenu {
+                    // Track the row under the finger; outside the card — none
+                    if layoutMenuRect.insetBy(dx: -8, dy: -4).contains(point) {
+                        let row = Int((point.y - layoutMenuRect.minY) / LayoutMenuBubble.rowHeight)
+                        layoutMenuSelectedIndex = max(0, min(1, row))
+                    } else {
+                        layoutMenuSelectedIndex = nil
+                    }
+                } else {
+                    let localX = point.x - calloutBubbleLeftX
+                    let idx = Int(localX / calloutOptionWidth)
+                    calloutSelectedIndex = max(0, min(calloutOptions.count - 1, idx))
+                }
             },
             onLongRelease: {
+                if isShowingLayoutMenu {
+                    if let index = layoutMenuSelectedIndex {
+                        model.setLayoutVariant(index == 0 ? .classic : .topRow)
+                    }
+                    isShowingLayoutMenu = false
+                    layoutMenuSelectedIndex = nil
+                    return
+                }
                 if isShowingCallout {
                     let selected = calloutOptions[calloutSelectedIndex]
                     onKey(.character(selected))
@@ -579,7 +622,8 @@ private struct RowView: View {
     let onPress: (KeyCap, CGRect) -> Void
     let onRelease: () -> Void
     let onLongPress: (CGRect, [String]) -> Void
-    let onDragMoved: (CGFloat) -> Void
+    let onSettingsLongPress: (CGRect) -> Void
+    let onDragMoved: (CGPoint) -> Void
     let onLongRelease: () -> Void
     let onCursorMove: (Int) -> Void
     let onCursorLineMove: (Int) -> Void
@@ -665,7 +709,7 @@ private struct RowView: View {
     private func handleChanged(value: DragGesture.Value) {
         guard !isPressed else {
             if isLongPressed {
-                onDragMoved(value.location.x)
+                onDragMoved(value.location)
             } else if isSpaceCursorMode {
                 spaceCursorDragged(to: value.location)
             } else if activeCap == .space {
@@ -721,6 +765,19 @@ private struct RowView: View {
             }
             longPressTimer = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
+        }
+
+        // Long-press on the gear: quick layout switch (a regular tap still
+        // opens the settings panel — the tap fires in handleEnded only when
+        // no long press was triggered)
+        if case .settings = key.cap {
+            let frame = key.frame
+            let work = DispatchWorkItem {
+                isLongPressed = true
+                onSettingsLongPress(frame)
+            }
+            longPressTimer = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
         }
     }
 
@@ -817,6 +874,87 @@ private struct CalloutBubble: View {
         .compositingGroup()
         .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
         .position(x: bubbleX, y: bubbleY)
+    }
+}
+
+// MARK: - Quick layout menu bubble
+
+/// Quick layout switcher shown above the gear key on long press — a small
+/// vertical card like the design prototype: title + subtitle per row, the
+/// current variant marked by its accent-tinted title, the row under the
+/// finger highlighted. Releasing over a row applies it; releasing outside
+/// the card changes nothing. Lives entirely inside the keyboard view — no
+/// system menus.
+private struct LayoutMenuBubble: View {
+    /// Row under the finger (nil — none).
+    let highlightedIndex: Int?
+    let currentVariant: LayoutVariant
+    let keyFrame: CGRect
+
+    static let menuWidth: CGFloat = 196
+    static let rowHeight: CGFloat = 52
+    private static let gap: CGFloat = 8   // between the card and the key top
+
+    /// Card frame in keyboard coordinates — shared with the drag hit-testing.
+    static func menuFrame(keyFrame: CGRect) -> CGRect {
+        let x = min(max(keyFrame.minX, 4),
+                    UIScreen.main.bounds.width - menuWidth - 4)
+        let y = max(keyFrame.minY - gap - rowHeight * 2, 2)
+        return CGRect(x: x, y: y, width: menuWidth, height: rowHeight * 2)
+    }
+
+    private static let accent = Color(UIColor(dynamicProvider: { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(red: 0.545, green: 0.533, blue: 1.0, alpha: 1)      // #8b88ff
+            : UIColor(red: 0.357, green: 0.341, blue: 0.878, alpha: 1)    // #5b57e0
+    }))
+    private static let accentTint = Color(UIColor(dynamicProvider: { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(red: 0.149, green: 0.145, blue: 0.255, alpha: 1)    // #262541
+            : UIColor(red: 0.925, green: 0.922, blue: 0.984, alpha: 1)    // #ecebfb
+    }))
+    private static let card = Color(UIColor(dynamicProvider: { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(red: 0.122, green: 0.122, blue: 0.141, alpha: 1)    // #1f1f24
+            : UIColor.white
+    }))
+
+    var body: some View {
+        let rect = Self.menuFrame(keyFrame: keyFrame)
+
+        return VStack(spacing: 0) {
+            // Keyboard UI speaks Lezgi: «ъ рядом с пробелом» / «ъ в верхнем
+            // ряду», подзаголовки — «первый/второй вариант»
+            row(0, title: "Ъ — арадин къвалаг", subtitle: "Сад лагьай вариант",
+                isCurrent: currentVariant == .classic)
+            Rectangle()
+                .fill(Color(UIColor.separator).opacity(0.5))
+                .frame(height: 1)
+            row(1, title: "Ъ — вини жергеда", subtitle: "Кьвед лагьай вариант",
+                isCurrent: currentVariant == .topRow)
+        }
+        .frame(width: Self.menuWidth)
+        .background(Self.card)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.28), radius: 10, x: 0, y: 5)
+        .position(x: rect.midX, y: rect.midY)
+    }
+
+    private func row(_ index: Int, title: String, subtitle: String,
+                     isCurrent: Bool) -> some View {
+        // The current variant is marked by its accent title alone — no
+        // checkmark, the tint is enough
+        VStack(alignment: .leading, spacing: 1) {
+            Text(verbatim: title)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(isCurrent ? Self.accent : Color(UIColor.label))
+            Text(verbatim: subtitle)
+                .font(.system(size: 11))
+                .foregroundColor(Color(UIColor.secondaryLabel))
+        }
+        .padding(.horizontal, 13)
+        .frame(width: Self.menuWidth, height: Self.rowHeight, alignment: .leading)
+        .background(highlightedIndex == index ? Self.accentTint : Color.clear)
     }
 }
 
