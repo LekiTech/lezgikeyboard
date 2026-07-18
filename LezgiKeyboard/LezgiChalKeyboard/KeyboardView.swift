@@ -96,6 +96,9 @@ struct KeyboardView: View {
     /// Row currently under the finger; nil when the finger is outside the
     /// menu, so releasing there changes nothing.
     @State private var layoutMenuSelectedIndex: Int? = nil
+    /// Menu row order, fixed when the menu opens: the current variant is
+    /// always the top row.
+    @State private var layoutMenuVariants: [LayoutVariant] = [.classic, .topRow]
 
     private let calloutOptionWidth: CGFloat = 44
 
@@ -142,7 +145,8 @@ struct KeyboardView: View {
 
             // Quick layout menu above the gear key (long press)
             if isShowingLayoutMenu {
-                LayoutMenuBubble(highlightedIndex: layoutMenuSelectedIndex,
+                LayoutMenuBubble(variants: layoutMenuVariants,
+                                 highlightedIndex: layoutMenuSelectedIndex,
                                  currentVariant: model.layoutVariant,
                                  keyFrame: layoutMenuFrame)
                     .allowsHitTesting(false)
@@ -553,6 +557,9 @@ struct KeyboardView: View {
                 pressedCap = nil
                 layoutMenuFrame = frame
                 layoutMenuRect = LayoutMenuBubble.menuFrame(keyFrame: frame)
+                // The current variant is always the top row
+                layoutMenuVariants = model.layoutVariant == .classic
+                    ? [.classic, .topRow] : [.topRow, .classic]
                 // Nothing starts highlighted; releasing without entering the
                 // menu changes nothing
                 layoutMenuSelectedIndex = nil
@@ -576,7 +583,7 @@ struct KeyboardView: View {
             onLongRelease: {
                 if isShowingLayoutMenu {
                     if let index = layoutMenuSelectedIndex {
-                        model.setLayoutVariant(index == 0 ? .classic : .topRow)
+                        model.setLayoutVariant(layoutMenuVariants[index])
                     }
                     isShowingLayoutMenu = false
                     layoutMenuSelectedIndex = nil
@@ -886,6 +893,8 @@ private struct CalloutBubble: View {
 /// the card changes nothing. Lives entirely inside the keyboard view — no
 /// system menus.
 private struct LayoutMenuBubble: View {
+    /// Rows in display order (the current variant is always first).
+    let variants: [LayoutVariant]
     /// Row under the finger (nil — none).
     let highlightedIndex: Int?
     let currentVariant: LayoutVariant
@@ -925,13 +934,17 @@ private struct LayoutMenuBubble: View {
         return VStack(spacing: 0) {
             // Keyboard UI speaks Lezgi: «ъ рядом с пробелом» / «ъ в верхнем
             // ряду», подзаголовки — «первый/второй вариант»
-            row(0, title: "Ъ — арадин къвалаг", subtitle: "Сад лагьай вариант",
-                isCurrent: currentVariant == .classic)
-            Rectangle()
-                .fill(Color(UIColor.separator).opacity(0.5))
-                .frame(height: 1)
-            row(1, title: "Ъ — вини жергеда", subtitle: "Кьвед лагьай вариант",
-                isCurrent: currentVariant == .topRow)
+            ForEach(Array(variants.enumerated()), id: \.element) { index, variant in
+                if index > 0 {
+                    Rectangle()
+                        .fill(Color(UIColor.separator).opacity(0.5))
+                        .frame(height: 1)
+                }
+                row(index,
+                    title: variant == .classic ? "Ъ — арадин къвалаг" : "Ъ — вини жергеда",
+                    subtitle: variant == .classic ? "Сад лагьай вариант" : "Кьвед лагьай вариант",
+                    isCurrent: variant == currentVariant)
+            }
         }
         .frame(width: Self.menuWidth)
         .background(Self.card)
