@@ -145,3 +145,53 @@ requirements first.
       sensitive data (aggregated word statistics at most)
 - [ ] Research Apple privacy / App Store Review requirements (privacy
       nutrition labels, data collection disclosure) before implementation
+
+## Stage 8 — Cloud sync and the split language model (future architecture)
+
+**High-priority architectural milestone — not an implementation task.**
+Nothing here is scheduled; this section exists so the learning engine is
+never redesigned into a corner. As the keyboard grows, this becomes one of
+the most important features, so every change to the learning engine from
+now on must stay compatible with the design below.
+
+The core decision: **SQLite databases are never synchronized directly.**
+The architecture distinguishes two language models with different owners:
+
+- **Personal language model** — each user's learned vocabulary and bigrams.
+  It belongs to the user, syncs across their devices through their account,
+  and is never merged into anyone else's model. The on-device
+  `learned.sqlite` becomes a device-local cache of this model.
+- **Global language model** — dictionaries, bigrams, and ranking data
+  shared by everyone, maintained **only** by the server. Devices never
+  modify it directly.
+
+Data flows in events, not databases:
+
+- Devices upload **learning events** (new word seen, word learned, bigram
+  observed, frequency updates, suggestion accepted, …) — never full
+  sentences, never message text, consistent with the privacy principles at
+  the top of this document.
+- The server aggregates events across many users and alone decides what
+  eventually enters the global model. A word joins it only after
+  sufficient aggregated evidence, so personal names, typos, and one-off
+  rare words never pollute the shared dictionary.
+- The keyboard periodically downloads updated global dictionaries,
+  bigrams, and language-model data, while each user's private learned
+  vocabulary stays separate — exactly the split the suggestion pipeline
+  already has today (bundled dictionary vs. `learned.sqlite`).
+
+Why today's design is already compatible — and must remain so:
+
+- The local store keeps exactly event-shaped facts (word + counters,
+  bigram + counter, picked/typed distinction, recency) and no sentences —
+  each row can be replayed as an upload event later.
+- The suggestion pipeline already merges two sources with the bundled
+  dictionary read-only; a server-updated global model slots into the same
+  seam the static dictionary occupies now.
+- Anything that would blur the personal/global boundary on device (e.g.,
+  writing learned words into the bundled dictionary, or making ranking
+  depend on mutating shared data) is off the table.
+
+Prerequisites when this ever starts: an account system, and everything
+Stage 7 lists — strict opt-in, full offline operation without it, and the
+Apple privacy / App Store Review research done first.
