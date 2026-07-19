@@ -397,23 +397,24 @@ final class LearnedWords {
         return sqlite3_step(stmt) == SQLITE_ROW
     }
 
-    /// Number of learned words (settings panel counter).
-    func count() -> Int {
-        intValue("SELECT COUNT(*) FROM user_word")
-    }
-
     /// Learned words for the settings dictionary list, ranked the same way
-    /// as suggestions (picked > typed, then recency).
+    /// as suggestions (picked > typed, then recency) and filtered by the
+    /// same visibility rule (`count + picked >= minVisibleUses`, ≥ 2
+    /// characters): below-threshold rows are internal frequency signals,
+    /// not yet user-facing vocabulary. Bundled-dictionary membership is
+    /// filtered by the caller, which owns that database handle.
     func topWords(limit: Int) -> [String] {
         var stmt: OpaquePointer?
         let sql = """
             SELECT word FROM user_word
+            WHERE count + picked >= ?2 AND LENGTH(word) >= 2
             ORDER BY count + 3 * picked DESC, last_used DESC
             LIMIT ?1
             """
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
         defer { sqlite3_finalize(stmt) }
         sqlite3_bind_int(stmt, 1, Int32(limit))
+        sqlite3_bind_int(stmt, 2, Int32(minVisibleUses))
         var results: [String] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
             if let c = sqlite3_column_text(stmt, 0) { results.append(String(cString: c)) }

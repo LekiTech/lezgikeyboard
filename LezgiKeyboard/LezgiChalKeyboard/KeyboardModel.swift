@@ -304,14 +304,17 @@ final class KeyboardModel: ObservableObject {
 
     // MARK: - Settings panel data
 
-    /// Number of learned words, for the settings dictionary counter.
-    func learnedWordCount() -> Int {
-        learned?.count() ?? 0
-    }
-
-    /// Learned words for the settings dictionary list, best first.
-    func learnedTopWords(limit: Int = 500) -> [String] {
-        learned?.topWords(limit: limit) ?? []
+    /// Saved words for the settings dictionary page: genuinely user-added
+    /// vocabulary only — words past the learned visibility threshold that
+    /// are absent from the bundled dictionary (the same exact lookup the
+    /// bar's literal candidate uses). The learning store also keeps records
+    /// for dictionary words — frequency and bigram signals — but those are
+    /// internal and never listed. The page counter derives from this same
+    /// array, so the count and the list cannot disagree. The limit matches
+    /// the store's own row cap, so the set is complete.
+    func savedWords(limit: Int = 5000) -> [String] {
+        (learned?.topWords(limit: limit) ?? [])
+            .filter { wordDB?.contains($0) != true }
     }
 
     private static let wordSeparators = CharacterSet.whitespacesAndNewlines

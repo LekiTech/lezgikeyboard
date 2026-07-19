@@ -453,8 +453,10 @@ struct SettingsPanelView: View {
     // MARK: - Building blocks
 
     private func refreshWords() {
-        wordCount = model.learnedWordCount()
-        words = model.learnedTopWords()
+        // One fetch feeds both the list and the counter, so they always
+        // agree — see KeyboardModel.savedWords for the filtering rule.
+        words = model.savedWords()
+        wordCount = words.count
     }
 
     private func group(@ViewBuilder _ content: () -> some View) -> some View {

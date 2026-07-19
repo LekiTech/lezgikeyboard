@@ -246,8 +246,12 @@ emoji key) opens the panel: a slide-up SwiftUI overlay inside the fixed
 250pt keyboard with a header (back / title) and stacked pages — home,
 layout variant, input («Кхьин»), theme («Тема»), learned-words dictionary
 («Гафарган»), about. The
-dictionary page shows the learned-word count and list
-(`LearnedWords.count()` / `topWords(limit:)`): the `×` on a row deletes
+dictionary page shows the saved words — `KeyboardModel.savedWords()`:
+learned words past the visibility threshold that are absent from the
+bundled dictionary (checked with `WordSuggestions.contains`). The
+learning store also keeps records for dictionary words as internal
+frequency/bigram signals; those are never listed, and the counter
+derives from the same filtered array as the list. The `×` on a row deletes
 one word immediately (`delete(_:)`, pairs included; the bundled dictionary
 is never touched), and «Вири чирнавай гафар чӏурун» opens an **in-panel
 confirmation sheet** (dim + card, «Чӏурун» / «Ваъ») — only its explicit
