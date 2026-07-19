@@ -7,6 +7,7 @@
 
 import UIKit
 import SwiftUI
+import Combine
 
 /// UIKit bridge for the keyboard extension: hosts the SwiftUI keyboard,
 /// owns `textDocumentProxy`, wires the view's closures into `KeyboardModel`,
@@ -17,10 +18,44 @@ class KeyboardViewController: UIInputViewController {
 
     private var model = KeyboardModel()
     private var hideKeyboardNameWork: DispatchWorkItem?
+    private var themeCancellable: AnyCancellable?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupKeyboard()
+        // The theme applies through UIKit so every dynamicProvider color
+        // re-resolves in place: switching in the panel recolors the whole
+        // keyboard live, no reopening. @Published emits the current value
+        // on subscription, so the saved theme also applies right here.
+        themeCancellable = model.$settings
+            .map(\.theme)
+            .removeDuplicates()
+            .sink { [weak self] theme in
+                guard let self else { return }
+                self.view.overrideUserInterfaceStyle = Self.interfaceStyle(for: theme)
+                // The system draws the keyboard backdrop BEHIND our
+                // transparent root and it follows the host's theme, not the
+                // override — so a forced theme needs its own opaque
+                // background in the native backdrop colors. `.system`
+                // restores the transparent root (native blurred backdrop).
+                self.view.backgroundColor = theme == .system ? .clear : Self.keyboardBackground
+            }
+    }
+
+    private static func interfaceStyle(for theme: KeyboardSettings.Theme) -> UIUserInterfaceStyle {
+        switch theme {
+        case .system: return .unspecified
+        case .light:  return .light
+        case .dark:   return .dark
+        }
+    }
+
+    /// Flat stand-ins for the system keyboard backdrop, resolved through
+    /// the overridden trait (light ≈ #D1D3D9, dark ≈ #2B2B2B).
+    private static let keyboardBackground = UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(red: 0.169, green: 0.169, blue: 0.169, alpha: 1)
+            : UIColor(red: 0.820, green: 0.827, blue: 0.851, alpha: 1)
     }
 
     override func viewWillAppear(_ animated: Bool) {

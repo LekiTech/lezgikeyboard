@@ -52,7 +52,7 @@ struct SettingsPanelView: View {
     var onResetAll: (() -> Void)? = nil
 
     private enum Page {
-        case home, layout, input, dictionary, about
+        case home, layout, input, theme, dictionary, about
     }
 
     @State private var stack: [Page] = [.home]
@@ -78,6 +78,7 @@ struct SettingsPanelView: View {
                         case .home:       homePage
                         case .layout:     layoutPage
                         case .input:      inputPage
+                        case .theme:      themePage
                         case .dictionary: dictionaryPage
                         case .about:      aboutPage
                         }
@@ -101,6 +102,7 @@ struct SettingsPanelView: View {
         case .home:       return ""
         case .layout:     return "Раскладка"
         case .input:      return "Кхьин"
+        case .theme:      return "Тема"
         case .dictionary: return "Гафарган"
         case .about:      return "Клавиатурадикай"
         }
@@ -161,6 +163,9 @@ struct SettingsPanelView: View {
                 divider
                 navRow(icon: "slider.horizontal.3", title: "Кхьин",
                        value: nil, page: .input)
+                divider
+                navRow(icon: "circle.lefthalf.filled", title: "Тема",
+                       value: themeTitle(model.settings.theme), page: .theme)
                 divider
                 navRow(icon: "text.book.closed", title: "Гафарган",
                        value: "\(wordCount)", page: .dictionary)
@@ -269,6 +274,43 @@ struct SettingsPanelView: View {
         radioRow(title: title, subtitle: subtitle,
                  selected: model.settings.calloutDelay == delay) {
             model.updateSettings { $0.calloutDelay = delay }
+        }
+    }
+
+    // MARK: - Theme page
+
+    private var themePage: some View {
+        Group {
+            sectionLabel("Тема — " + String(localized: "theme"))
+            group {
+                themeRow(.system, title: "Системадин",
+                         subtitle: String(localized: "Match the system"))
+                divider
+                themeRow(.light, title: "Экуь",
+                         subtitle: String(localized: "Light theme"))
+                divider
+                themeRow(.dark, title: "Мичӏи",
+                         subtitle: String(localized: "Dark theme"))
+            }
+        }
+    }
+
+    /// A tap applies instantly: the controller observes `settings.theme`
+    /// and flips `overrideUserInterfaceStyle`, recoloring the keyboard
+    /// (panel included) live, with nothing to close or reopen.
+    private func themeRow(_ theme: KeyboardSettings.Theme,
+                          title: String, subtitle: String) -> some View {
+        radioRow(title: title, subtitle: subtitle,
+                 selected: model.settings.theme == theme) {
+            model.updateSettings { $0.theme = theme }
+        }
+    }
+
+    private func themeTitle(_ theme: KeyboardSettings.Theme) -> String {
+        switch theme {
+        case .system: return "Системадин"
+        case .light:  return "Экуь"
+        case .dark:   return "Мичӏи"
         }
     }
 

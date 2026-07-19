@@ -236,7 +236,8 @@ off the typing path — the suggestion bar itself has no reset control.
 The gear key in the bottom row (`KeyCap.settings`, between «123» and the
 emoji key) opens the panel: a slide-up SwiftUI overlay inside the fixed
 250pt keyboard with a header (back / title) and stacked pages — home,
-layout variant, learned-words dictionary («Гафарган»), about. The
+layout variant, input («Кхьин»), theme («Тема»), learned-words dictionary
+(«Гафарган»), about. The
 dictionary page shows the learned-word count and list
 (`LearnedWords.count()` / `topWords(limit:)`): the `×` on a row deletes
 one word immediately (`delete(_:)`, pairs included; the bundled dictionary
@@ -261,6 +262,12 @@ languages — the same String Catalog approach the container app uses). All
 values persist in the extension's `UserDefaults` and default to the
 pre-settings behavior:
 
+- **Theme** («Тема», Phase 3): system / light / dark. Deliberately Theme,
+  not Appearance — Appearance becomes its own section only if more visual
+  settings ever appear. Applied via `overrideUserInterfaceStyle` on the
+  controller's root view (a Combine subscription to `settings.theme`), so
+  every `dynamicProvider` color re-resolves live — switching in the panel
+  recolors the whole keyboard instantly, nothing closes or reloads.
 - **Suggestions**: word suggestions master switch (off ⇒ the bar shows
   nothing at all, including fallback words; learning itself continues),
   next-word suggestions, and the automatic trailing space after accepting

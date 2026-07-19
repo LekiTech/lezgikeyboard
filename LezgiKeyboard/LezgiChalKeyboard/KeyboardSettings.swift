@@ -39,6 +39,14 @@ struct KeyboardSettings: Equatable {
         }
     }
 
+    /// Keyboard color theme; `.system` follows the host's appearance.
+    /// Deliberately named Theme, not Appearance: if animation/size/contrast
+    /// settings ever appear, they get an Appearance section of their own
+    /// with Theme as one item inside it.
+    enum Theme: String, CaseIterable {
+        case system, light, dark
+    }
+
     // Suggestions
     var wordSuggestions = true
     var nextWordSuggestions = true
@@ -50,6 +58,8 @@ struct KeyboardSettings: Equatable {
     // Learning / long press
     var learnSpeed: LearnSpeed = .normal
     var calloutDelay: CalloutDelay = .normal
+    // Theme
+    var theme: Theme = .system
 
     // MARK: - Persistence
 
@@ -62,6 +72,7 @@ struct KeyboardSettings: Equatable {
         static let spaceLabel = "set_spaceLabel"
         static let learnSpeed = "set_learnSpeed"
         static let calloutDelay = "set_calloutDelay"
+        static let theme = "set_theme"
     }
 
     static func load(from defaults: UserDefaults = .standard) -> KeyboardSettings {
@@ -83,6 +94,10 @@ struct KeyboardSettings: Equatable {
            let value = CalloutDelay(rawValue: raw) {
             settings.calloutDelay = value
         }
+        if let raw = defaults.string(forKey: Key.theme),
+           let value = Theme(rawValue: raw) {
+            settings.theme = value
+        }
         return settings
     }
 
@@ -95,5 +110,6 @@ struct KeyboardSettings: Equatable {
         defaults.set(spaceLabel, forKey: Key.spaceLabel)
         defaults.set(learnSpeed.rawValue, forKey: Key.learnSpeed)
         defaults.set(calloutDelay.rawValue, forKey: Key.calloutDelay)
+        defaults.set(theme.rawValue, forKey: Key.theme)
     }
 }
