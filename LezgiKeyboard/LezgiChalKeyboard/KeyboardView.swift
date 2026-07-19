@@ -649,6 +649,15 @@ private struct MorphingWordText: View {
     /// animation depending on how the old and new values relate.
     @State private var displayed: String
 
+    /// False for a single frame after a full-word swap: every glyph starts
+    /// transparent and slightly enlarged, then settles to normal with a
+    /// per-position delay — the native bar's left-to-right ripple for a
+    /// newly appearing candidate (its private per-glyph UIMorphingLabel is
+    /// the machinery behind that effect). Purely visual: the glyphs are
+    /// laid out instantly, opacity/scaleEffect never touch layout or
+    /// hit-testing, and the prefix morph path never flips this.
+    @State private var glyphsSettled = true
+
     init(word: String, size: CGFloat, quoted: Bool = false) {
         self.word = word
         self.size = size
@@ -660,9 +669,18 @@ private struct MorphingWordText: View {
         ViewThatFits {
             HStack(spacing: 0) {
                 if quoted { Text(verbatim: "«") }
-                ForEach(Array(displayed.enumerated()), id: \.offset) { _, ch in
+                ForEach(Array(displayed.enumerated()), id: \.offset) { index, ch in
                     Text(String(ch))
                         .transition(.opacity)
+                        .opacity(glyphsSettled ? 1 : 0)
+                        .scaleEffect(glyphsSettled ? 1 : 1.15)
+                        // A whisper of vertical settle (from just below) so
+                        // the appearance reads as organic motion, not pure
+                        // scaling. Render-only, like the other two.
+                        .offset(y: glyphsSettled ? 0 : 1.5)
+                        .animation(.easeOut(duration: 0.2)
+                            .delay(Double(index) * 0.022),
+                            value: glyphsSettled)
                 }
                 if quoted { Text(verbatim: "»") }
             }
@@ -680,11 +698,18 @@ private struct MorphingWordText: View {
             let morphs = !old.isEmpty && !new.isEmpty
                 && (new.hasPrefix(old) || old.hasPrefix(new))
             if morphs {
-                withAnimation(.easeOut(duration: 0.15)) { displayed = new }
+                withAnimation(.easeOut(duration: 0.2)) { displayed = new }
             } else {
+                // A completely new word: glyphs take their final layout
+                // immediately (no bar drift), hidden and slightly enlarged —
+                // then settle left to right on the next runloop tick.
                 var instant = Transaction()
                 instant.disablesAnimations = true
-                withTransaction(instant) { displayed = new }
+                withTransaction(instant) {
+                    displayed = new
+                    glyphsSettled = false
+                }
+                DispatchQueue.main.async { glyphsSettled = true }
             }
         }
     }
