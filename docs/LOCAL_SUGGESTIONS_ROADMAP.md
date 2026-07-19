@@ -111,6 +111,41 @@ signal, and no fragile workaround is attempted for them.
       reset it manually (README keyboard section, the app's privacy feature
       card, and docs/CODEBASE_OVERVIEW.md)
 
+## Architecture note — the dictionary base-score contract
+
+A foundational decision for the ranking engine, recorded here so it is
+never re-litigated ad hoc. The bundled dictionary is the beginning of a
+language model, not a word list — and its ranking signal is governed by
+this contract:
+
+- The bundled dictionary should eventually expose an opaque **`baseScore`**
+  (or equivalent ranking value) — deliberately *not* a "frequency" field.
+- The suggestion engine treats this value as a **read-only ordering
+  signal** supplied by the language model, with no assumptions about how
+  it was produced.
+- The source of `baseScore` may evolve — frequency corpus, aggregated
+  cloud statistics, a future language model — **without any change to the
+  ranking engine**.
+- With no ranking data the behavior falls back gracefully to the current
+  implementation: effectively `baseScore = 0` for every entry (ordering
+  degrades to the present length-based one).
+- `baseScore` belongs exclusively to the bundled/global language model and
+  is **never modified on the device**; updates arrive only as whole
+  dictionary replacements (see Stage 8).
+- Personal learning (`learned.sqlite`) stays completely separate and
+  continues to hold only user-specific data.
+- The ranking engine must **never numerically combine `baseScore` with
+  personal learning counters** — no `finalScore = baseScore + 3·count +
+  5·picked` style blending, however tempting. The two are measured on
+  unrelated, independently drifting scales (decay halves personal
+  counters; server updates renormalize global scores), so any arithmetic
+  mix silently changes meaning over time. The only sanctioned interaction
+  between the sources is the existing *ordering-level* merge (learned
+  candidates rank above dictionary candidates). If a unified ranking ever
+  becomes necessary, the global language model must provide it explicitly,
+  shipping ready-made data to the device — the device never reconciles
+  heterogeneous scores on its own.
+
 ## Stage 6 — Optional future local improvements
 
 - [ ] `UILexicon` integration — **postponed, research-only.** Although it
@@ -178,7 +213,9 @@ Data flows in events, not databases:
 - The keyboard periodically downloads updated global dictionaries,
   bigrams, and language-model data, while each user's private learned
   vocabulary stays separate — exactly the split the suggestion pipeline
-  already has today (bundled dictionary vs. `learned.sqlite`).
+  already has today (bundled dictionary vs. `learned.sqlite`). The
+  dictionary's `baseScore` (see the architecture note before Stage 6) is
+  the field these global-model updates ship in.
 
 Why today's design is already compatible — and must remain so:
 
