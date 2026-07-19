@@ -148,4 +148,18 @@ enum LezgiLayout {
         case .numbers, .symbols, .letters: return 18
         }
     }
+
+    /// Letter keys match the native iOS Russian keyboard: 22pt medium with
+    /// a slightly narrowed SF width axis, so the glyphs read taller and
+    /// narrower at the same stroke weight. All other key labels keep the
+    /// regular weight and standard width.
+    static func fontWeight(for cap: KeyCap) -> Font.Weight {
+        if case .character = cap { return .medium }
+        return .regular
+    }
+
+    static func fontWidth(for cap: KeyCap) -> Font.Width {
+        if case .character = cap { return Font.Width(-0.1) }
+        return .standard
+    }
 }

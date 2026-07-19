@@ -56,6 +56,15 @@ WhatsApp/Telegram WebP assets, `gen_emoji.py` for `EmojiData.swift`);
 | `EmojiData.swift` | Generated emoji catalog; regenerate with `scripts/gen_emoji.py`, never edit by hand |
 | `Info.plist` | `RequestsOpenAccess = false` (never change casually — see Privacy), `PrimaryLanguage = lez` |
 
+## Keyboard height
+
+The keyboard is a fixed 250pt (36 suggestion bar + 8 gap + 4×43 key rows
++ 3×11 row gaps = 249, with 1pt slack): a 999-priority height constraint
+created in `setupKeyboard()` plus `.frame(height: 250)` on the SwiftUI
+root. The inter-row spacing lives in two places that must stay in sync:
+the key-grid `VStack` in `KeyboardView.body` and `RowView.rowSpacing`
+(the expanded hit zones tile the row gaps with it).
+
 ## Key tap flow
 
 1. `KeyboardView` renders rows from `model.rows(needsGlobe:)` and reports
@@ -206,7 +215,7 @@ always shows its three cells.
 
 The gear key in the bottom row (`KeyCap.settings`, between «123» and the
 emoji key) opens the panel: a slide-up SwiftUI overlay inside the fixed
-242pt keyboard with a header (back / title) and stacked pages — home,
+250pt keyboard with a header (back / title) and stacked pages — home,
 layout variant, learned-words dictionary («Гафарган»), about. The
 dictionary page shows the learned-word count and list
 (`LearnedWords.count()` / `topWords(limit:)`): the `×` on a row deletes

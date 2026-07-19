@@ -107,9 +107,12 @@ struct KeyboardView: View {
             if model.page == .emoji {
                 emojiPage
             } else {
-                VStack(spacing: 0) {
+                VStack(spacing: 8) {
                     suggestionBar
                     GeometryReader { geo in
+                        // Vertical budget: 36 bar + 8 gap + 4×43 keys + 3×11
+                        // row gaps = 249 within the fixed 250 total height.
+                        // Row spacing must match RowView.rowSpacing.
                         VStack(spacing: 11) {
                             let allRows = model.rows(needsGlobe: model.needsGlobe)
                             ForEach(Array(allRows.enumerated()), id: \.offset) { i, row in
@@ -162,7 +165,7 @@ struct KeyboardView: View {
             }
         }
         .animation(.easeOut(duration: 0.28), value: model.showsSettings)
-        .frame(height: 242, alignment: .top)
+        .frame(height: 250, alignment: .top)
         .coordinateSpace(name: "keyboard")
         .ignoresSafeArea()
     }
@@ -648,6 +651,8 @@ private struct RowView: View {
 
     private let spacing: CGFloat = 6
     private let keyHeight: CGFloat = 43
+    /// Must mirror the key-grid `VStack` spacing in `KeyboardView.body` so
+    /// the expanded hit zones tile the inter-row gaps exactly.
     private let rowSpacing: CGFloat = 11
     /// Row x-origin in keyboard space; matches `.padding(.horizontal, 6)` on the VStack.
     private let rowLeadingX: CGFloat = 6
@@ -1141,7 +1146,9 @@ private struct KeyButton: View {
 
         default:
             Text(LezgiLayout.label(for: cap, shifted: model.isShifted))
-                .font(.system(size: LezgiLayout.fontSize(for: cap)))
+                .font(.system(size: LezgiLayout.fontSize(for: cap),
+                              weight: LezgiLayout.fontWeight(for: cap))
+                    .width(LezgiLayout.fontWidth(for: cap)))
                 .foregroundColor(Color(UIColor.label))
         }
     }
