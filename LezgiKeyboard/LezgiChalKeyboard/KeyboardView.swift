@@ -304,10 +304,17 @@ struct KeyboardView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
             }
+            // The native bar morphs candidate text per character
+            // (TUIPredictionViewCell holds a UIMorphingLabel next to its
+            // plain label): retained glyphs persist, the added letter
+            // animates in. `.interpolate` is the public SwiftUI analog of
+            // that morph; the short curve keeps up with fast typing.
             Text(word)
                 .font(.system(size: 16))
                 .lineLimit(1)
                 .foregroundColor(word.isEmpty ? .clear : Color(UIColor.label))
+                .contentTransition(.interpolate)
+                .animation(.easeOut(duration: 0.15), value: word)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -1145,10 +1152,9 @@ private struct KeyButton: View {
                 .foregroundColor(Color(UIColor.label))
 
         default:
-            Text(LezgiLayout.label(for: cap, shifted: model.isShifted))
-                .font(.system(size: LezgiLayout.fontSize(for: cap),
-                              weight: LezgiLayout.fontWeight(for: cap))
-                    .width(LezgiLayout.fontWidth(for: cap)))
+            let label = LezgiLayout.label(for: cap, shifted: model.isShifted)
+            Text(label)
+                .font(LezgiLayout.keyLabelFont(for: cap, label: label))
                 .foregroundColor(Color(UIColor.label))
         }
     }

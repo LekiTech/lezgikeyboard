@@ -201,9 +201,11 @@ lowercase.
 
 When nothing is being typed and there are no next-word suggestions, the
 bar shows 3 random dictionary words
-(`WordSuggestions.randomWords`), re-rolled once per keyboard appearance and
-kept in `fallbackWords`; their display form is recomputed on every context
-change so they follow the capitalization rules. Tapping one inserts it
+(`WordSuggestions.randomWords`), kept in `fallbackWords` and re-rolled on
+every *transition* into this idle state — keyboard appearance, or erasing
+the typed prefix — never continuously while the bar stays idle
+(`KeyboardModel.barWasIdle`); their display form is recomputed on every
+context change so they follow the capitalization rules. Tapping one inserts it
 without deleting anything; long-press does nothing (they are not learned
 records). There are no hardcoded placeholder words.
 

@@ -125,14 +125,11 @@ final class KeyboardModel: ObservableObject {
             return
         }
         let prefix = composedWord
-        // The idle-bar words follow the same capitalization context as real
-        // suggestions (start of message, after . ! ?, Caps Lock)
-        fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
         guard !prefix.isEmpty else {
             // Stage 4: with no active prefix, suggest likely next words from
             // the learned bigrams of the last completed word. When there is
             // no last word (sentence start) or no confident pairs, the bar
-            // falls back to the random dictionary words above.
+            // falls back to the random dictionary words.
             let nextWords = settings.nextWordSuggestions
                 ? (lastCompletedWord.flatMap { learned?.nextWords(after: $0) } ?? [])
                 : []
@@ -143,10 +140,25 @@ final class KeyboardModel: ObservableObject {
                 display.append(form)
                 learnedSet.insert(form)
             }
+            // Entering the idle state (nothing typed, no next words) rolls a
+            // fresh random trio, so erasing text never resurfaces the same
+            // idle words. Only the transition rolls — while the bar stays
+            // idle the words hold still (updateSuggestions also fires on
+            // cursor moves and host resyncs).
+            let isIdle = display.isEmpty
+            if isIdle && !barWasIdle {
+                fallbackWords = wordDB?.randomWords(3) ?? []
+            }
+            barWasIdle = isIdle
+            // The idle-bar words follow the same capitalization context as
+            // real suggestions (start of message, after . ! ?, Caps Lock)
+            fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
             suggestions = display
             learnedDisplayWords = learnedSet
             return
         }
+        barWasIdle = false
+        fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
         let learnedWords = learned?.suggestions(for: prefix,
                                                 previous: previousWord(proxy: proxy)) ?? []
         var merged = learnedWords
@@ -230,7 +242,14 @@ final class KeyboardModel: ObservableObject {
     /// The raw fallback words as stored in the dictionary.
     private var fallbackWords: [String] = []
 
+    /// Whether the last `updateSuggestions` left the bar in the idle state
+    /// (no prefix, no next-word suggestions). A fresh random trio is rolled
+    /// only on the transition into idle, never continuously while idle.
+    private var barWasIdle = true
+
     /// Re-rolls the idle-bar words; called once per keyboard appearance.
+    /// Mid-session re-rolls happen in `updateSuggestions` whenever the bar
+    /// transitions back into the idle state.
     func refreshFallbackSuggestions(proxy: UITextDocumentProxy) {
         guard settings.wordSuggestions else {
             fallbackWords = []
@@ -239,6 +258,7 @@ final class KeyboardModel: ObservableObject {
         }
         fallbackWords = wordDB?.randomWords(3) ?? []
         fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
+        barWasIdle = true
     }
 
     /// Whether this displayed suggestion came from the learned store.

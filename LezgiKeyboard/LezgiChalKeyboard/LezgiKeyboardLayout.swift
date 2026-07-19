@@ -149,17 +149,38 @@ enum LezgiLayout {
         }
     }
 
-    /// Letter keys match the native iOS Russian keyboard: 22pt medium with
-    /// a slightly narrowed SF width axis, so the glyphs read taller and
-    /// narrower at the same stroke weight. All other key labels keep the
-    /// regular weight and standard width.
-    static func fontWeight(for cap: KeyCap) -> Font.Weight {
-        if case .character = cap { return .medium }
-        return .regular
+    /// Size for the label actually rendered on the key. Lowercase letters
+    /// are optically much smaller than caps at the same point size (x-height
+    /// vs cap height), so they get a 1.2× bump to match the native keyboard;
+    /// uppercase already matches native one-to-one. Digits and punctuation
+    /// have no case and keep the base size.
+    static func fontSize(for cap: KeyCap, label: String) -> CGFloat {
+        let base = fontSize(for: cap)
+        if case .character = cap, label != label.uppercased() {
+            return base * 1.2
+        }
+        return base
     }
 
-    static func fontWidth(for cap: KeyCap) -> Font.Width {
-        if case .character = cap { return Font.Width(-0.1) }
-        return .standard
+    /// Character keys match the native iOS Russian keyboard, tuned by eye
+    /// on device: SF's continuous variable axes via a UIKit descriptor,
+    /// because SwiftUI's `Font.Weight` only exposes fixed steps and the
+    /// match sits between regular (0.0) and medium (0.23). Width is
+    /// slightly narrowed the same way (standard 0, condensed -0.2).
+    /// All other key labels keep the plain system font.
+    private static let characterWeight: CGFloat = 0.19
+    private static let characterWidth: CGFloat = -0.1
+
+    static func keyLabelFont(for cap: KeyCap, label: String) -> Font {
+        let size = fontSize(for: cap, label: label)
+        guard case .character = cap else {
+            return .system(size: size)
+        }
+        let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor
+            .addingAttributes([.traits: [
+                UIFontDescriptor.TraitKey.weight: characterWeight,
+                UIFontDescriptor.TraitKey.width: characterWidth,
+            ]])
+        return Font(UIFont(descriptor: descriptor, size: size))
     }
 }
