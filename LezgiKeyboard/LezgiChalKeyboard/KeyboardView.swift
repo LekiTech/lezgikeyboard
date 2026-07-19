@@ -310,7 +310,8 @@ struct KeyboardView: View {
     private static let suggestionFontSize: CGFloat = 18
 
     private func suggestionCellVisual(_ word: String, index: Int) -> some View {
-        MorphingWordText(word: word, size: Self.suggestionFontSize)
+        MorphingWordText(word: word, size: Self.suggestionFontSize,
+                         quoted: word == model.unrecognizedTyped)
             .padding(.horizontal, 12)
             .frame(maxHeight: .infinity)
             .background {
@@ -637,30 +638,39 @@ private struct MorphingWordText: View {
 
     let word: String
     let size: CGFloat
+    /// Presentation-only «…» around the word — the native keyboard's mark
+    /// for a literal candidate it does not recognize (Cyrillic locales use
+    /// guillemets there). The quotes render outside the per-character
+    /// ForEach, so glyph identity and the morph animation are unaffected,
+    /// and `word` itself stays undecorated everywhere.
+    let quoted: Bool
 
     /// The word currently rendered; follows `word` with or without
     /// animation depending on how the old and new values relate.
     @State private var displayed: String
 
-    init(word: String, size: CGFloat) {
+    init(word: String, size: CGFloat, quoted: Bool = false) {
         self.word = word
         self.size = size
+        self.quoted = quoted
         _displayed = State(initialValue: word)
     }
 
     var body: some View {
         ViewThatFits {
             HStack(spacing: 0) {
+                if quoted { Text(verbatim: "«") }
                 ForEach(Array(displayed.enumerated()), id: \.offset) { _, ch in
                     Text(String(ch))
                         .transition(.opacity)
                 }
+                if quoted { Text(verbatim: "»") }
             }
             // Words too wide for the cell fall back to a plain text with
             // no morph, shrinking a little before truncating — Lezgi words
             // run long, and a slightly smaller whole word beats losing its
             // ending to an ellipsis.
-            Text(displayed)
+            Text(verbatim: quoted ? "«\(displayed)»" : displayed)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
         }

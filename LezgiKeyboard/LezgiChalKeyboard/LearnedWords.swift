@@ -378,6 +378,25 @@ final class LearnedWords {
         return results
     }
 
+    /// Whether the word is already learned AND visible — exactly the
+    /// recognition rule of `suggestions(for:previous:)`: lowercased match,
+    /// `count + picked >= minVisibleUses`, at least 2 characters. Used for
+    /// the bar's «unknown word» marker, so a below-threshold word keeps
+    /// counting as unknown until it would actually surface as a suggestion.
+    func isRecognized(_ word: String) -> Bool {
+        var stmt: OpaquePointer?
+        let sql = """
+            SELECT 1 FROM user_word
+            WHERE word = ?1 AND count + picked >= ?2 AND LENGTH(word) >= 2
+            LIMIT 1
+            """
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return false }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, word.lowercased(), -1, SQLITE_TRANSIENT)
+        sqlite3_bind_int(stmt, 2, Int32(minVisibleUses))
+        return sqlite3_step(stmt) == SQLITE_ROW
+    }
+
     /// Number of learned words (settings panel counter).
     func count() -> Int {
         intValue("SELECT COUNT(*) FROM user_word")

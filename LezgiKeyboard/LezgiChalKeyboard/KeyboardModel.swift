@@ -107,6 +107,13 @@ final class KeyboardModel: ObservableObject {
     /// store — the only ones long-press deletion applies to.
     private(set) var learnedDisplayWords: Set<String> = []
 
+    /// The raw typed word currently leading the bar as a literal candidate
+    /// because neither the bundled dictionary nor the visible learned words
+    /// recognize it. Presentation-only marker: the suggestion value stays
+    /// undecorated (tap, learning, deletion counts all see the raw word) —
+    /// the view alone wraps this word in «…», like the native keyboard.
+    @Published private(set) var unrecognizedTyped: String?
+
     /// Merges learned words (best first) with the bundled dictionary.
     /// Both use the Cyrillic palochka `ӏ`, so deduplication is a plain
     /// case-insensitive comparison. Both kinds follow the capitalization
@@ -122,6 +129,7 @@ final class KeyboardModel: ObservableObject {
             suggestions = []
             learnedDisplayWords = []
             fallbackSuggestions = []
+            unrecognizedTyped = nil
             return
         }
         let prefix = composedWord
@@ -153,6 +161,7 @@ final class KeyboardModel: ObservableObject {
             // The idle-bar words follow the same capitalization context as
             // real suggestions (start of message, after . ! ?, Caps Lock)
             fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
+            unrecognizedTyped = nil
             suggestions = display
             learnedDisplayWords = learnedSet
             return
@@ -175,7 +184,19 @@ final class KeyboardModel: ObservableObject {
             display.append(form)
             if index < learnedWords.count { learnedSet.insert(form) }
         }
-        suggestions = display
+        // Native-style literal candidate: a typed word unknown to BOTH
+        // sources — absent from the bundled dictionary and not a visible
+        // learned word (each checked by its own exact lookup with the same
+        // normalization as the prefix queries above) — leads the bar
+        // exactly as typed, and the view marks it with «…». Recognized
+        // words keep the existing behavior untouched.
+        if wordDB?.contains(prefix) != true, learned?.isRecognized(prefix) != true {
+            unrecognizedTyped = prefix
+            suggestions = [prefix] + display.prefix(2)
+        } else {
+            unrecognizedTyped = nil
+            suggestions = display
+        }
         learnedDisplayWords = learnedSet
     }
 

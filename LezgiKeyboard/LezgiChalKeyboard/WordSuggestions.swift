@@ -36,6 +36,19 @@ final class WordSuggestions {
         return results
     }
 
+    /// Exact-word membership — the same normalization rule as
+    /// `suggestions(for:)`: the table stores lowercase words with the
+    /// Cyrillic palochka, so a lowercased comparison is byte-exact.
+    func contains(_ word: String) -> Bool {
+        guard !word.isEmpty else { return false }
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT 1 FROM words WHERE word = ?1 LIMIT 1",
+                                 -1, &stmt, nil) == SQLITE_OK else { return false }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, (word.lowercased() as NSString).utf8String, -1, nil)
+        return sqlite3_step(stmt) == SQLITE_ROW
+    }
+
     /// Random dictionary words for the idle suggestion bar. Queried once per
     /// keyboard appearance, so the scan over the small dictionary is
     /// imperceptible.

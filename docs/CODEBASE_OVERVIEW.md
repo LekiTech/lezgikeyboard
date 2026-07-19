@@ -111,6 +111,14 @@ never touches the previous completed word (empty prefix ⇒ nothing deleted).
 4. Top 3 go through `displayForm` (capitalization) and into `suggestions`;
    the learned subset is remembered in `learnedDisplayWords` so the view
    knows which entries support long-press deletion.
+5. A typed word unknown to **both** sources — `WordSuggestions.contains`
+   fails and `LearnedWords.isRecognized` fails (exact lookups with the
+   same normalization and visibility threshold as the prefix queries) —
+   is prepended as a literal candidate, exactly as typed, capped with two
+   matches. `unrecognizedTyped` marks it and the view alone renders the
+   «…» around it (native-style "will learn this" hint); the stored value,
+   tap insertion, learning, and deletion counts all use the raw word.
+   Recognized words change nothing.
 
 The suggestion bar shows 3 cells; long-press on a *learned* suggestion shows
 an inline Lezgi confirmation row («“слово” чӏурдани?» — Ваъ / Чӏурун) that
