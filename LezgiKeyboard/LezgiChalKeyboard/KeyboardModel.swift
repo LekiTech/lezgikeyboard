@@ -387,8 +387,29 @@ final class KeyboardModel: ObservableObject {
             }
 
         case .backspace:
+            // Deleting the trailing space of a completed word means "going
+            // back to edit that word": composition resumes with the whole
+            // word, so the bar switches from next-word predictions straight
+            // to suggestions for the full word. The word is extracted from
+            // the pre-delete context because the proxy lags behind our own
+            // edit. Only this exact transition — a single space with a word
+            // character before it — resumes; every other deletion keeps the
+            // existing behavior.
+            var resumedWord: String?
+            if composedWord.isEmpty,
+               let ctx = proxy.documentContextBeforeInput, ctx.hasSuffix(" "),
+               let prev = ctx.dropLast().unicodeScalars.last,
+               !Self.wordSeparators.contains(prev) {
+                resumedWord = String(ctx.dropLast())
+                    .components(separatedBy: Self.wordSeparators)
+                    .last(where: { !$0.isEmpty })
+            }
             proxy.deleteBackward()
-            if !composedWord.isEmpty { composedWord.removeLast() }
+            if let resumedWord {
+                composedWord = resumedWord
+            } else if !composedWord.isEmpty {
+                composedWord.removeLast()
+            }
 
         case .shift:
             // off → once (single shift) → capsLock (double tap) → off

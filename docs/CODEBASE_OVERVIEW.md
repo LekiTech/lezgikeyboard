@@ -84,6 +84,10 @@ through the host app), so the model keeps its own `composedWord` buffer:
 - updated synchronously on every keystroke (characters append — including
   multi-character digraphs; backspace removes one character; space, return,
   separators, and accepted suggestions clear it);
+- backspacing the single trailing space of a completed word **resumes
+  composing that whole word** (extracted from the pre-delete context) — the
+  bar switches from next-word predictions to suggestions for the full word;
+  only this exact transition resumes, all other deletions are unchanged;
 - resynced from the settled context on every `textDidChange`;
 - `wordPrefix(proxy:)` returns `""` when the context ends with a separator —
   a completed word is never treated as a prefix being typed.
