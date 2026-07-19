@@ -22,23 +22,6 @@ private extension Color {
     }))
 }
 
-// MARK: - Return key label
-
-private func returnLabel(for type: UIReturnKeyType) -> String {
-    switch type {
-    case .go:               return "Фин"
-    case .search:           return "Жагъурун"
-    case .send:             return "Ракъурун"
-    case .done:             return "Хьанва"
-    case .next:             return "Къведайди"
-    case .`continue`:       return "Давамрун"
-    case .join:             return "ЭкечIун"
-    case .route:            return "Рехъ"
-    case .emergencyCall:    return "Хаталувилин зенг"
-    default:                return ""
-    }
-}
-
 // MARK: - Root view
 
 /// SwiftUI rendering of the keyboard: key grid, suggestion bar (including
@@ -767,8 +750,15 @@ private struct RowView: View {
     /// Row x-origin in keyboard space; matches `.padding(.horizontal, 6)` on the VStack.
     private let rowLeadingX: CGFloat = 6
 
+    /// Per-key width in row units; the return key adapts to its label.
+    private func keyWeight(_ cap: KeyCap) -> CGFloat {
+        cap == .return
+            ? LezgiLayout.returnKeyWeight(for: model.returnKeyType)
+            : LezgiLayout.weight(cap)
+    }
+
     private var unitWidth: CGFloat {
-        let totalWeight = row.map { LezgiLayout.weight($0) }.reduce(0, +)
+        let totalWeight = row.map { keyWeight($0) }.reduce(0, +)
         let totalSpacingPts = spacing * CGFloat(row.count - 1)
         return (totalWidth - totalSpacingPts) / totalWeight
     }
@@ -781,7 +771,7 @@ private struct RowView: View {
         var result: [(KeyCap, CGRect)] = []
         var x = rowLeadingX
         for cap in row {
-            let kw = unitWidth * LezgiLayout.weight(cap)
+            let kw = unitWidth * keyWeight(cap)
             result.append((cap, CGRect(x: x, y: rowMinY, width: kw, height: keyHeight)))
             x += kw + spacing
         }
@@ -795,7 +785,7 @@ private struct RowView: View {
                 ForEach(Array(row.enumerated()), id: \.offset) { _, cap in
                     KeyButton(cap: cap, model: model, returnKeyType: model.returnKeyType,
                               isPressed: activeCap == cap)
-                        .frame(width: unitWidth * LezgiLayout.weight(cap), height: keyHeight)
+                        .frame(width: unitWidth * keyWeight(cap), height: keyHeight)
                 }
             }
             .background(
@@ -1223,15 +1213,30 @@ private struct KeyButton: View {
             .animation(.easeOut(duration: 0.25), value: model.showsKeyboardName)
 
         case .return:
-            let text = returnLabel(for: returnKeyType)
-            if text.isEmpty {
-                Image(systemName: "return")
+            if returnKeyType == .search {
+                // The universal search icon: drawn as an SF Symbol like
+                // every other key icon so it matches the native look —
+                // a color emoji would not.
+                Image(systemName: "magnifyingglass")
                     .font(.system(size: 18))
                     .foregroundColor(Color(UIColor.label))
             } else {
-                Text(text)
-                    .font(.system(size: 14))
-                    .foregroundColor(Color(UIColor.label))
+                let text = LezgiLayout.returnLabel(for: returnKeyType)
+                if text.isEmpty {
+                    Image(systemName: "return")
+                        .font(.system(size: 18))
+                        .foregroundColor(Color(UIColor.label))
+                } else {
+                    // Single line, near-full size: long labels widen the
+                    // key (LezgiLayout.returnKeyWeight) instead of
+                    // shrinking the typography; the scale floor only
+                    // guards the pathological cases.
+                    Text(text)
+                        .font(.system(size: 14))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .foregroundColor(Color(UIColor.label))
+                }
             }
 
         case .emoji:

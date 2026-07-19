@@ -136,6 +136,36 @@ enum LezgiLayout {
         }
     }
 
+    // MARK: - Return key
+
+    /// Action label for the return key, in Lezgi. `.search` is empty on
+    /// purpose: it renders as the universal magnifying-glass icon — the
+    /// correct translation («Жагъурун») is too long for a key, and the
+    /// icon is the familiar convention on modern keyboards. An empty
+    /// label means "show an icon".
+    static func returnLabel(for type: UIReturnKeyType) -> String {
+        switch type {
+        case .go:               return "Фин"
+        case .send:             return "Ракъурун"
+        case .done:             return "Хьанва"
+        case .next:             return "Къведайди"
+        case .`continue`:       return "Давамрун"
+        case .join:             return "ЭкечIун"
+        case .route:            return "Рехъ"
+        case .emergencyCall:    return "Хаталувилин зенг"
+        default:                return ""
+        }
+    }
+
+    /// Return-key width in row units, adapted to its label: icons and
+    /// short labels keep the native 1.8, longer Lezgi labels get more
+    /// room so the typography stays readable instead of shrinking. Row
+    /// weights normalize against their total, so the space bar absorbs
+    /// the difference and the layout stays balanced.
+    static func returnKeyWeight(for type: UIReturnKeyType) -> CGFloat {
+        returnLabel(for: type).count <= 6 ? 1.8 : 2.3
+    }
+
     // MARK: - Label font size
 
     static func fontSize(for cap: KeyCap) -> CGFloat {

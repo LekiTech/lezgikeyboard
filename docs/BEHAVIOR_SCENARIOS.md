@@ -85,6 +85,15 @@ Given the idle bar showing three random dictionary words. When the user
 types something and then erases it completely. Then three different random
 words appear; while the bar stays idle the words hold still.
 
+## Return key
+
+**S17 — Action-specific return key.**
+Given a text field whose action is Search. When the keyboard appears. Then
+the return key shows the magnifying-glass icon instead of a text label.
+For other actions (Go, Send, Done, Next, …) the key shows its Lezgi label
+on a single line; longer labels widen the key slightly (the space bar
+absorbs the difference) rather than shrinking the typography.
+
 ## Settings effects
 
 **S14 — Suggestions master switch.**
