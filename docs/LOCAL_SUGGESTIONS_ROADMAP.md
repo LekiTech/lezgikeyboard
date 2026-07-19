@@ -158,8 +158,11 @@ this contract:
       dictionary)
 - [ ] Better recency scoring (exponential decay on `last_used` instead of a
       simple boost)
-- [ ] Local-only diagnostics if useful (e.g., suggestion acceptance rate
-      kept on device, never transmitted)
+- [x] Local-only diagnostics: five meta-table counters (opportunities,
+      accepted, typed manually, ignored, corrected) with acceptance rate
+      in a DEBUG-only startup log — kept on device, never transmitted,
+      independent of ranking and learning. The baseline for every ranking
+      change that follows (see CODEBASE_OVERVIEW, "Local quality metrics")
 
 ## Stage 7 — Optional Full Access / improvement mode
 

@@ -397,6 +397,55 @@ final class LearnedWords {
         return sqlite3_step(stmt) == SQLITE_ROW
     }
 
+    // MARK: - Local quality metrics (Stage 6)
+    //
+    // Plain counters in the meta table: never leave the device, never
+    // affect ranking or learning, and survive a learned-data reset — they
+    // describe the bar's quality history, not the dictionary. Baseline
+    // first, ranking changes later, one at a time.
+
+    enum Metric: String, CaseIterable {
+        /// Completed words that had at least one predictive candidate
+        /// (beyond the quoted literal) visible while being composed.
+        /// Counted once per completed word, not per suggestion refresh.
+        case opportunities = "m_opportunities"
+        /// Predictive suggestions accepted from the bar.
+        case accepted = "m_accepted"
+        /// Words completed manually — terminator typed, host send-clear,
+        /// or the quoted literal tapped.
+        case typedManually = "m_typed_manually"
+        /// Manual completions that had predictive candidates available.
+        case ignored = "m_ignored"
+        /// Accepted suggestions the user went back into before completing
+        /// any other word (event-based, no timeout).
+        case corrected = "m_corrected"
+    }
+
+    func bumpMetric(_ metric: Metric) {
+        var stmt: OpaquePointer?
+        let sql = """
+            INSERT INTO meta(key, value) VALUES(?1, 1)
+            ON CONFLICT(key) DO UPDATE SET value = value + 1
+            """
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, metric.rawValue, -1, SQLITE_TRANSIENT)
+        sqlite3_step(stmt)
+    }
+
+    /// One line for the DEBUG startup log (Console.app, "kb-metrics").
+    func metricsSummary() -> String {
+        let value: (Metric) -> Int = { self.intValue(
+            "SELECT value FROM meta WHERE key = '\($0.rawValue)'") }
+        let accepted = value(.accepted), ignored = value(.ignored)
+        let rate = accepted + ignored > 0
+            ? String(format: "%.1f%%", 100.0 * Double(accepted) / Double(accepted + ignored))
+            : "n/a"
+        return "opportunities=\(value(.opportunities)) accepted=\(accepted) "
+            + "typedManually=\(value(.typedManually)) ignored=\(ignored) "
+            + "corrected=\(value(.corrected)) acceptance=\(rate)"
+    }
+
     /// Learned words for the settings dictionary list, ranked the same way
     /// as suggestions (picked > typed, then recency) and filtered by the
     /// same visibility rule (`count + picked >= minVisibleUses`, ≥ 2

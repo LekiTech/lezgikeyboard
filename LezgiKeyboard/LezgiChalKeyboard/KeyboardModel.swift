@@ -87,6 +87,11 @@ final class KeyboardModel: ObservableObject {
         learnWordCommittedByHostClear(proxy: proxy)
         composedWord = wordPrefix(proxy: proxy)
         lastCompletedWord = previousWord(proxy: proxy)
+        // The cursor moved on from the word just accepted from the bar —
+        // the acceptance settles as final (metrics, best effort).
+        if let pending = pendingAcceptedWord, lastCompletedWord != pending {
+            pendingAcceptedWord = nil
+        }
     }
 
     /// Sending a message usually clears the field without the word ever
@@ -100,6 +105,7 @@ final class KeyboardModel: ObservableObject {
     /// are absorbed by the 3-confirmation visibility threshold.
     private func learnWordCommittedByHostClear(proxy: UITextDocumentProxy) {
         guard !composedWord.isEmpty, !proxy.hasText else { return }
+        recordManualCompletion()
         learned?.learn(composedWord, previous: lastCompletedWord, picked: false)
     }
 
@@ -158,6 +164,11 @@ final class KeyboardModel: ObservableObject {
                 fallbackWords = wordDB?.randomWords(3) ?? []
             }
             barWasIdle = isIdle
+            // No active composition: whatever opportunity was open was
+            // either consumed by a completion hook or abandoned with the
+            // erased word — either way the flag must not leak into the
+            // next word (metrics).
+            wordHadPredictions = false
             // The idle-bar words follow the same capitalization context as
             // real suggestions (start of message, after . ! ?, Caps Lock)
             fallbackSuggestions = fallbackWords.map { displayForm($0, prefix: "", proxy: proxy) }
@@ -198,6 +209,10 @@ final class KeyboardModel: ObservableObject {
             suggestions = display
         }
         learnedDisplayWords = learnedSet
+        // Metrics: the composed word has seen at least one predictive
+        // candidate (the quoted literal alone does not count) — one
+        // opportunity per word, consumed by the completion hooks.
+        if !display.isEmpty { wordHadPredictions = true }
     }
 
     /// Shared display form for every suggestion type — learned, dictionary,
@@ -225,6 +240,39 @@ final class KeyboardModel: ObservableObject {
         word.lowercased()
     }
 
+    // MARK: - Local quality metrics (Stage 6)
+
+    /// Whether the word being composed has had at least one predictive
+    /// candidate (beyond the quoted literal) on the bar. One opportunity
+    /// is counted per completed word, not per suggestion refresh; the
+    /// flag resets when the word completes or the composition is
+    /// abandoned (prefix back to empty).
+    private var wordHadPredictions = false
+
+    /// The word most recently accepted from the bar (with its trailing
+    /// space), pending until any other word completes. Going back into it
+    /// counts as a correction — event-based, no timeout.
+    private var pendingAcceptedWord: String?
+
+    /// Metrics for one manually completed word: every manual completion
+    /// counts, and predictive candidates shown during composition close
+    /// as one opportunity that was passed over. Completing a word also
+    /// settles any pending acceptance as final (the user moved on).
+    private func recordManualCompletion() {
+        learned?.bumpMetric(.typedManually)
+        if wordHadPredictions {
+            learned?.bumpMetric(.opportunities)
+            learned?.bumpMetric(.ignored)
+        }
+        wordHadPredictions = false
+        pendingAcceptedWord = nil
+    }
+
+    /// Metrics line for the DEBUG startup log.
+    func metricsLine() -> String {
+        learned?.metricsSummary() ?? "no learned store"
+    }
+
     // MARK: - Learning (Stage 1, docs/LOCAL_SUGGESTIONS_ROADMAP.md)
 
     /// Punctuation that finishes the word before it, like space and return do.
@@ -237,6 +285,7 @@ final class KeyboardModel: ObservableObject {
     private func learnCompletedWord(proxy: UITextDocumentProxy) {
         let word = wordPrefix(proxy: proxy)
         guard !word.isEmpty else { return }
+        recordManualCompletion()
         learned?.learn(word, previous: previousWord(proxy: proxy), picked: false)
         lastCompletedWord = word
     }
@@ -248,6 +297,19 @@ final class KeyboardModel: ObservableObject {
     /// word stays the composed prefix the user can keep extending.
     func recordPickedSuggestion(_ word: String, previous: String?, insertedSpace: Bool) {
         learned?.learn(word, previous: previous, picked: true)
+        // Metrics: tapping the quoted literal confirms the user's own
+        // word — any predictions shown were passed over, so it counts as
+        // a manual completion. Tapping a real prediction is an
+        // acceptance; it stays pending until another word completes, and
+        // going back into it counts as a correction.
+        if word == unrecognizedTyped {
+            recordManualCompletion()
+        } else {
+            learned?.bumpMetric(.accepted)
+            if wordHadPredictions { learned?.bumpMetric(.opportunities) }
+            wordHadPredictions = false
+            if insertedSpace { pendingAcceptedWord = word }
+        }
         if insertedSpace {
             composedWord = ""
             lastCompletedWord = word
@@ -430,6 +492,13 @@ final class KeyboardModel: ObservableObject {
             }
             proxy.deleteBackward()
             if let resumedWord {
+                // Metrics: going back into the word just accepted from the
+                // bar means the suggestion did not survive contact with
+                // the user — a correction, however much time has passed.
+                if resumedWord == pendingAcceptedWord {
+                    learned?.bumpMetric(.corrected)
+                }
+                pendingAcceptedWord = nil
                 composedWord = resumedWord
             } else if !composedWord.isEmpty {
                 composedWord.removeLast()

@@ -126,6 +126,21 @@ deletes the record from `learned.sqlite` only. **Never present UIKit alerts
 from the keyboard extension** — the restricted environment kills the
 keyboard and iOS switches to another one.
 
+## Local quality metrics (Stage 6)
+
+Five plain counters in `learned.sqlite`'s meta table (`LearnedWords.Metric`),
+maintained by `KeyboardModel`: `m_opportunities` (completed words that had
+predictive candidates — the quoted literal alone does not count; one per
+word, not per refresh), `m_accepted` (predictions taken from the bar),
+`m_typed_manually` (manual completions, including literal taps and
+host-clear sends), `m_ignored` (manual completions that had predictions
+available), `m_corrected` (accepted word edited again before any other
+word completed — event-based, no timeout). Acceptance rate =
+`accepted / (accepted + ignored)`. Read via the DEBUG-only startup log
+(Console.app, category "kb-metrics"). Never transmitted, never affects
+ranking or learning, survives a learned-data reset. Purpose: a baseline
+so every future ranking change is judged by numbers, one change at a time.
+
 ## Learned words (learned.sqlite, Stages 1–2)
 
 - Location: the **keyboard extension's own sandbox container**

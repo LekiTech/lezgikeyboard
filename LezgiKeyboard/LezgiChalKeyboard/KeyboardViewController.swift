@@ -8,6 +8,7 @@
 import UIKit
 import SwiftUI
 import Combine
+import os.log
 
 /// UIKit bridge for the keyboard extension: hosts the SwiftUI keyboard,
 /// owns `textDocumentProxy`, wires the view's closures into `KeyboardModel`,
@@ -23,6 +24,13 @@ class KeyboardViewController: UIInputViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupKeyboard()
+        #if DEBUG
+        // Local quality metrics baseline (Stage 6): visible in Console.app,
+        // category "kb-metrics". Debug builds only; nothing is transmitted.
+        Logger(subsystem: Bundle.main.bundleIdentifier ?? "LezgiChalKeyboard",
+               category: "kb-metrics")
+            .log("[kb-metrics] \(self.model.metricsLine(), privacy: .public)")
+        #endif
         // The theme applies through UIKit so every dynamicProvider color
         // re-resolves in place: switching in the panel recolors the whole
         // keyboard live, no reopening. @Published emits the current value
