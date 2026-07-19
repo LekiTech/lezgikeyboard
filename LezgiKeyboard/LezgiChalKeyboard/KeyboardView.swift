@@ -62,6 +62,10 @@ struct KeyboardView: View {
 
     // Suggestion bar press state
     @State private var pressedSuggestionIndex: Int? = nil
+    /// Measured cell frames in the "suggestionBar" coordinate space; the
+    /// cells are content-sized, so the gesture layer dispatches taps by
+    /// these instead of fixed thirds.
+    @State private var suggestionCellFrames = [CGRect](repeating: .zero, count: 3)
     @State private var suggestionLongPressWork: DispatchWorkItem? = nil
     @State private var suggestionLongPressFired = false
     /// Learned word awaiting delete confirmation; the bar shows an inline
@@ -223,65 +227,77 @@ struct KeyboardView: View {
 
     private var suggestionCells: some View {
         let words = paddedSuggestions()
+        let visible = Array(words.enumerated().filter { !$0.element.isEmpty })
         return ZStack(alignment: .leading) {
-            // Visual layer: highlights + text + dividers, no gestures
+            // Visual layer, no gestures: content-sized cells spread evenly
+            // over the bar — every candidate takes the width it needs and
+            // the free space splits into the flexible gaps. No separators:
+            // the press capsule is the only affordance. Layout is NOT
+            // animated here on purpose: a prefix morph animates its own
+            // size change (the withAnimation transaction inside
+            // MorphingWordText propagates through layout), so evolving
+            // words slide naturally while full candidate swaps snap
+            // instantly — the bar never drifts on its own.
             HStack(alignment: .center, spacing: 0) {
-                suggestionCellVisual(words[0], index: 0)
-                suggestionDivider
-                suggestionCellVisual(words[1], index: 1)
-                suggestionDivider
-                suggestionCellVisual(words[2], index: 2)
+                Spacer(minLength: 6)
+                ForEach(visible, id: \.offset) { item in
+                    suggestionCellVisual(item.element, index: item.offset)
+                    Spacer(minLength: 6)
+                }
             }
 
-            // Gesture layer: transparent rect covering the three cells,
-            // dispatches by x position
-            GeometryReader { geo in
-                Color.white.opacity(0.001)
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                let idx = suggestionIndex(x: value.location.x, width: geo.size.width)
-                                guard pressedSuggestionIndex != idx else { return }
-                                pressedSuggestionIndex = idx
-                                // Long-press offers to delete a learned suggestion;
-                                // dictionary words have nothing to delete
-                                suggestionLongPressWork?.cancel()
+            // Gesture layer: transparent rect covering the whole bar,
+            // dispatching by x position to the nearest cell
+            Color.white.opacity(0.001)
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .named("suggestionBar"))
+                        .onChanged { value in
+                            guard let idx = suggestionIndex(at: value.location.x),
+                                  pressedSuggestionIndex != idx else { return }
+                            pressedSuggestionIndex = idx
+                            // Long-press offers to delete a learned suggestion;
+                            // dictionary words have nothing to delete
+                            suggestionLongPressWork?.cancel()
+                            suggestionLongPressFired = false
+                            let word = words[idx]
+                            if !word.isEmpty, model.isLearnedSuggestion(word) {
+                                let work = DispatchWorkItem {
+                                    suggestionLongPressFired = true
+                                    pressedSuggestionIndex = nil
+                                    pendingDeleteWord = word
+                                }
+                                suggestionLongPressWork = work
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
+                            }
+                        }
+                        .onEnded { value in
+                            suggestionLongPressWork?.cancel()
+                            suggestionLongPressWork = nil
+                            pressedSuggestionIndex = nil
+                            guard !suggestionLongPressFired else {
                                 suggestionLongPressFired = false
-                                let word = words[idx]
-                                if !word.isEmpty, model.isLearnedSuggestion(word) {
-                                    let work = DispatchWorkItem {
-                                        suggestionLongPressFired = true
-                                        pressedSuggestionIndex = nil
-                                        pendingDeleteWord = word
-                                    }
-                                    suggestionLongPressWork = work
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
-                                }
+                                return
                             }
-                            .onEnded { value in
-                                suggestionLongPressWork?.cancel()
-                                suggestionLongPressWork = nil
-                                pressedSuggestionIndex = nil
-                                guard !suggestionLongPressFired else {
-                                    suggestionLongPressFired = false
-                                    return
-                                }
-                                let idx = suggestionIndex(x: value.location.x, width: geo.size.width)
-                                let word = words[idx]
-                                guard !word.isEmpty else { return }
-                                onSuggestion?(word)
-                            }
-                    )
-            }
+                            guard let idx = suggestionIndex(at: value.location.x) else { return }
+                            let word = words[idx]
+                            guard !word.isEmpty else { return }
+                            onSuggestion?(word)
+                        }
+                )
         }
         .frame(height: 36)
+        .coordinateSpace(name: "suggestionBar")
     }
 
-    private func suggestionIndex(x: CGFloat, width: CGFloat) -> Int {
-        let third = width / 3
-        if x < third { return 0 }
-        if x < third * 2 { return 1 }
-        return 2
+    /// Cell for a bar touch: boundaries lie at the midpoints between
+    /// neighboring cells, so the whole bar stays tappable just like the
+    /// old fixed thirds.
+    private func suggestionIndex(at x: CGFloat) -> Int? {
+        let visible = paddedSuggestions().enumerated().filter { !$0.element.isEmpty }
+        return visible.min {
+            abs(suggestionCellFrames[$0.offset].midX - x)
+                < abs(suggestionCellFrames[$1.offset].midX - x)
+        }?.offset
     }
 
     private func paddedSuggestions() -> [String] {
@@ -290,33 +306,27 @@ struct KeyboardView: View {
         return s
     }
 
-    private var suggestionDivider: some View {
-        Rectangle()
-            .fill(Color(UIColor.separator))
-            .frame(width: 1, height: 26)
-    }
+    /// Bar text size, chosen by on-device comparison of 16/17/18pt.
+    private static let suggestionFontSize: CGFloat = 18
 
     private func suggestionCellVisual(_ word: String, index: Int) -> some View {
-        ZStack {
-            if pressedSuggestionIndex == index {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.kbLetterKey)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
+        MorphingWordText(word: word, size: Self.suggestionFontSize)
+            .padding(.horizontal, 12)
+            .frame(maxHeight: .infinity)
+            .background {
+                // The pressed highlight hugs the cell content, so it always
+                // fully contains the (already truncated) text
+                if pressedSuggestionIndex == index {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.kbLetterKey)
+                        .padding(.vertical, 4)
+                }
             }
-            // The native bar morphs candidate text per character
-            // (TUIPredictionViewCell holds a UIMorphingLabel next to its
-            // plain label): retained glyphs persist, the added letter
-            // animates in. `.interpolate` is the public SwiftUI analog of
-            // that morph; the short curve keeps up with fast typing.
-            Text(word)
-                .font(.system(size: 16))
-                .lineLimit(1)
-                .foregroundColor(word.isEmpty ? .clear : Color(UIColor.label))
-                .contentTransition(.interpolate)
-                .animation(.easeOut(duration: 0.15), value: word)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onGeometryChange(for: CGRect.self) {
+                $0.frame(in: .named("suggestionBar"))
+            } action: {
+                suggestionCellFrames[index] = $0
+            }
     }
 
     // MARK: - Emoji page
@@ -609,6 +619,64 @@ struct KeyboardView: View {
             onCursorMove: { steps in onCursorMove?(steps) },
             onCursorLineMove: { lines in onCursorLineMove?(lines) }
         )
+    }
+}
+
+// MARK: - Morphing suggestion text
+
+/// Suggestion-cell text that mimics the native keyboard's per-glyph
+/// candidate morph (TUIPredictionViewCell's UIMorphingLabel): when a word
+/// is extended or shortened while typing (shared prefix), the retained
+/// letters slide to their new centered positions and the added/removed
+/// letter fades — while a completely different word swaps instantly, like
+/// the native plain-label path. Rendering is per-character `Text`s with
+/// positional identity, so inter-letter kerning is lost — imperceptible
+/// for SF at this size. Purely visual: gestures and hit testing live on
+/// the bar's own layers.
+private struct MorphingWordText: View {
+
+    let word: String
+    let size: CGFloat
+
+    /// The word currently rendered; follows `word` with or without
+    /// animation depending on how the old and new values relate.
+    @State private var displayed: String
+
+    init(word: String, size: CGFloat) {
+        self.word = word
+        self.size = size
+        _displayed = State(initialValue: word)
+    }
+
+    var body: some View {
+        ViewThatFits {
+            HStack(spacing: 0) {
+                ForEach(Array(displayed.enumerated()), id: \.offset) { _, ch in
+                    Text(String(ch))
+                        .transition(.opacity)
+                }
+            }
+            // Words too wide for the cell fall back to a plain text with
+            // no morph, shrinking a little before truncating — Lezgi words
+            // run long, and a slightly smaller whole word beats losing its
+            // ending to an ellipsis.
+            Text(displayed)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .font(.system(size: size))
+        .foregroundColor(Color(UIColor.label))
+        .onChange(of: word) { old, new in
+            let morphs = !old.isEmpty && !new.isEmpty
+                && (new.hasPrefix(old) || old.hasPrefix(new))
+            if morphs {
+                withAnimation(.easeOut(duration: 0.15)) { displayed = new }
+            } else {
+                var instant = Transaction()
+                instant.disablesAnimations = true
+                withTransaction(instant) { displayed = new }
+            }
+        }
     }
 }
 

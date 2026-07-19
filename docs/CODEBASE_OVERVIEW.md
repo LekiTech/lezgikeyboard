@@ -209,11 +209,25 @@ context change so they follow the capitalization rules. Tapping one inserts it
 without deleting anything; long-press does nothing (they are not learned
 records). There are no hardcoded placeholder words.
 
+## Suggestion bar UI
+
+The bar deliberately does not copy Apple (project philosophy: keys feel
+native, the bar is best-in-class): cells are content-sized and spread
+evenly with flexible gaps, no separators — the press capsule is the only
+affordance; empty slots are dropped entirely. Text is 18pt (chosen by
+on-device comparison); overlong words shrink to 0.85 before truncating.
+`MorphingWordText` mimics a per-glyph morph: a word extended/shortened
+while typing animates (retained letters slide, the changed letter fades),
+a completely different candidate snaps instantly — layout follows the same
+rule because the morph's `withAnimation` transaction propagates through
+layout and swaps run with animations disabled. Taps dispatch by measured
+cell frames to the nearest cell midpoint (`suggestionCellFrames`), so the
+whole bar stays tappable.
+
 ## Resetting learned data (Stage 5)
 
 Reset lives in the **in-keyboard settings panel** (`SettingsPanelView`),
-off the typing path — the suggestion bar itself has no reset control and
-always shows its three cells.
+off the typing path — the suggestion bar itself has no reset control.
 
 The gear key in the bottom row (`KeyCap.settings`, between «123» and the
 emoji key) opens the panel: a slide-up SwiftUI overlay inside the fixed
