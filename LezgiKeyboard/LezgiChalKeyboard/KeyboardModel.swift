@@ -92,6 +92,14 @@ final class KeyboardModel: ObservableObject {
         if let pending = pendingAcceptedWord, lastCompletedWord != pending {
             pendingAcceptedWord = nil
         }
+        // A host-confirmed state change disarms the auto-space swallow —
+        // unless it is just our own acceptance edit landing (context still
+        // ends with the word + space), which some hosts report through
+        // textDidChange too. Same best-effort pattern as above.
+        if let word = autoSpacedAcceptedWord,
+           proxy.documentContextBeforeInput?.hasSuffix(word + " ") != true {
+            autoSpacedAcceptedWord = nil
+        }
     }
 
     /// Sending a message usually clears the field without the word ever
@@ -278,6 +286,19 @@ final class KeyboardModel: ObservableObject {
     /// Punctuation that finishes the word before it, like space and return do.
     private static let wordTerminators: Set<String> = [".", ",", "?", "!", ";", ":"]
 
+    /// Punctuation that, typed right after a bar tap, swallows the
+    /// auto-inserted trailing space and lands next to the word.
+    private static let autoSpaceSwallowers: Set<String> = [".", ",", "?", "!"]
+
+    /// The word just inserted by a suggestion-bar tap together with its
+    /// automatic trailing space — predictive and literal taps alike. Armed
+    /// only for the very next key event: any other key or a host resync
+    /// clears it, so a manually typed space or a space away from the
+    /// cursor can never be swallowed. Deliberately separate from
+    /// `pendingAcceptedWord` (metrics), which has different semantics and
+    /// lifecycle.
+    private var autoSpacedAcceptedWord: String?
+
     /// Records the word before the cursor as completed, together with the
     /// word preceding it in the same sentence. Called before the terminator
     /// (space / return / punctuation) is inserted; the terminator handlers
@@ -313,6 +334,7 @@ final class KeyboardModel: ObservableObject {
         if insertedSpace {
             composedWord = ""
             lastCompletedWord = word
+            autoSpacedAcceptedWord = word
         } else {
             composedWord = word
         }
@@ -417,10 +439,27 @@ final class KeyboardModel: ObservableObject {
         // First keystroke dismisses the keyboard name on the spacebar, like native
         showsKeyboardName = false
 
+        // The auto-space swallow is armed for the very next key only:
+        // consume the flag now so every path below (including this key
+        // itself) leaves it cleared.
+        let autoSpaced = autoSpacedAcceptedWord
+        autoSpacedAcceptedWord = nil
+
         switch cap {
 
         case .character(let s):
             if Self.wordTerminators.contains(s) { learnCompletedWord(proxy: proxy) }
+            // Sentence punctuation typed right after a bar tap lands next
+            // to the word: the auto-inserted trailing space is removed —
+            // but only when it provably is that space (flag armed by the
+            // tap AND the context still ends with word + space). This
+            // runs after learnCompletedWord, which no-ops on the trailing
+            // space, so the accepted word is never learned twice.
+            if Self.autoSpaceSwallowers.contains(s),
+               let word = autoSpaced,
+               proxy.documentContextBeforeInput?.hasSuffix(word + " ") == true {
+                proxy.deleteBackward()
+            }
             let text = isShifted ? LezgiLayout.applyCase(s, capsLock: isCapsLock) : s
             proxy.insertText(text)
             if s.count == 1, let scalar = s.unicodeScalars.first,

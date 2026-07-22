@@ -31,6 +31,14 @@ Given the auto-space setting off. When the user taps a candidate. Then the
 word is inserted without a trailing space and remains the active
 composition, extendable by further typing.
 
+**S18 — Punctuation swallows the automatic space.**
+Given a word just accepted from the bar with its automatic trailing space
+(predictive suggestion or quoted literal alike). When the very next key
+is `.` `,` `?` or `!`. Then the automatic space is removed and the mark
+lands right after the word («word.», not «word .»). A manually typed
+space is never removed; any other key or a cursor move in between keeps
+the space; with auto-space off nothing changes.
+
 **S5 — Suggestions follow the sentence context.**
 Given a sentence start (empty field, or after `.` `!` `?`). When
 suggestions appear. Then they are capitalized; with Caps Lock on they are

@@ -275,6 +275,14 @@ from the host context whenever the host confirms state.
   composedWord length) characters with the word + trailing space
   (auto-space setting on; off → word stays the active composition).
   Chains directly into next-word suggestions.
+- **Punctuation after acceptance**: `. , ? !` typed as the very next key
+  after a bar tap (predictive or literal) removes the auto-inserted
+  trailing space so the mark lands next to the word. Track the accepted
+  word in a dedicated state armed only until the next key event or a
+  confirmed cursor move, and verify the context still ends with
+  word + space before deleting — a manually typed space must never be
+  swallowed. Keep this state separate from the metrics' pending-accepted
+  word.
 
 ## 8. Learning store (`learned.sqlite` equivalent)
 
