@@ -175,8 +175,10 @@ themes paint the background explicitly (see §10 Theme).
   enters cursor mode (all key labels hidden), horizontal drag moves the
   caret 1 character per 8 pt, vertical 1 line per 30 pt.
 - **Double-space → «. »** (user-disableable): second space within 0.35 s,
-  only when the character before the first space is a letter/digit;
-  replaces the space, arms Shift, ends the sentence.
+  only when the character before the first space is a letter/digit or a
+  closing wrapper `) ] } " ' »`; replaces the space, arms Shift, ends the
+  sentence. Sentence-start capitalization likewise looks through trailing
+  closing wrappers («word?» still ends the sentence).
 - **Gear key**: tap opens the in-keyboard settings panel; long-press
   0.35 s opens a quick two-row menu above the key for the «ъ» layout
   variant (current variant always the top row; release outside = no
@@ -278,14 +280,18 @@ from the host context whenever the host confirms state.
   composedWord length) characters with the word + trailing space
   (auto-space setting on; off → word stays the active composition).
   Chains directly into next-word suggestions.
-- **Punctuation after acceptance**: `. , ? !` typed as the very next key
-  after a bar tap (predictive or literal) removes the auto-inserted
-  trailing space so the mark lands next to the word. Track the accepted
-  word in a dedicated state armed only until the next key event or a
-  confirmed cursor move, and verify the context still ends with
-  word + space before deleting — a manually typed space must never be
-  swallowed. Keep this state separate from the metrics' pending-accepted
-  word.
+- **Punctuation after acceptance**: `. , ? ! ; : ) ] }` typed as the next
+  TEXT input after a bar tap (predictive or literal) removes the
+  auto-inserted trailing space so the mark lands next to the word (quotes
+  are deliberately excluded — after a space they usually open a
+  quotation, so the space must stay). Track the accepted
+  word in a dedicated state consumed only by text events — a character,
+  space, return, backspace — or a confirmed cursor move. Page switches
+  («123»/«#+=»/АБВ), shift, and other non-text keys must NOT clear it:
+  the marks live on the symbol pages, so the user always page-switches on
+  the way to them. Verify the context still ends with word + space before
+  deleting — a manually typed space must never be swallowed. Keep this
+  state separate from the metrics' pending-accepted word.
 
 ## 8. Learning store (`learned.sqlite` equivalent)
 

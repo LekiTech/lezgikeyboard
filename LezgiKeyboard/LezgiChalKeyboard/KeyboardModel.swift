@@ -287,8 +287,21 @@ final class KeyboardModel: ObservableObject {
     private static let wordTerminators: Set<String> = [".", ",", "?", "!", ";", ":"]
 
     /// Punctuation that, typed right after a bar tap, swallows the
-    /// auto-inserted trailing space and lands next to the word.
-    private static let autoSpaceSwallowers: Set<String> = [".", ",", "?", "!"]
+    /// auto-inserted trailing space and lands next to the word. The rule
+    /// itself is Apple-documented ("if you enter a comma, period, or
+    /// other punctuation, the space is deleted"); the exact set is OUR
+    /// reading of "other punctuation": sentence marks, clause marks, and
+    /// unambiguous closers. Excluding quotes is our design decision, not
+    /// verified native behavior — a quote after a space is usually an
+    /// OPENING quote for the next word, so the space must stay.
+    private static let autoSpaceSwallowers: Set<String> =
+        [".", ",", "?", "!", ";", ":", ")", "]", "}"]
+
+    /// Closing wrappers that may trail a sentence ender («word?» / word.)
+    /// without hiding it: capitalization and the double-space period look
+    /// through them. Our design decision in the native spirit (not
+    /// verified against iOS glyph by glyph).
+    private static let sentenceClosers: Set<Character> = [")", "]", "}", "\"", "'", "»"]
 
     /// The word just inserted by a suggestion-bar tap together with its
     /// automatic trailing space — predictive and literal taps alike. Armed
@@ -439,15 +452,20 @@ final class KeyboardModel: ObservableObject {
         // First keystroke dismisses the keyboard name on the spacebar, like native
         showsKeyboardName = false
 
-        // The auto-space swallow is armed for the very next key only:
-        // consume the flag now so every path below (including this key
-        // itself) leaves it cleared.
+        // The auto-space swallow survives non-text keys: page switches,
+        // shift, the gear — the user is still "right after the accepted
+        // word" while walking to the punctuation on the «123» page (the
+        // letters page has none of . , ? !). Only text events consume the
+        // flag: a character (including the swallowing mark itself), space,
+        // return, backspace. Emoji inserts and cursor moves bypass
+        // handleKey, but the context check below (word + space still at
+        // the cursor) keeps them safe regardless.
         let autoSpaced = autoSpacedAcceptedWord
-        autoSpacedAcceptedWord = nil
 
         switch cap {
 
         case .character(let s):
+            autoSpacedAcceptedWord = nil
             if Self.wordTerminators.contains(s) { learnCompletedWord(proxy: proxy) }
             // Sentence punctuation typed right after a bar tap lands next
             // to the word: the auto-inserted trailing space is removed —
@@ -482,12 +500,17 @@ final class KeyboardModel: ObservableObject {
             }
 
         case .space:
+            autoSpacedAcceptedWord = nil
             // Quick double space after a word turns into ". " with a capital next
             if settings.doubleSpacePeriod,
                let last = lastSpaceTap, Date().timeIntervalSince(last) < 0.35,
                let before = proxy.documentContextBeforeInput,
                before.hasSuffix(" "), before.count >= 2,
-               let prev = before.dropLast().last, prev.isLetter || prev.isNumber {
+               let prev = before.dropLast().last,
+               // The shortcut also fires after a closing quote/bracket —
+               // «word" ␣␣» → «word". » (our extension; the letter/digit
+               // core is the classic rule)
+               prev.isLetter || prev.isNumber || Self.sentenceClosers.contains(prev) {
                 proxy.deleteBackward()
                 proxy.insertText(". ")
                 if shiftState != .capsLock { shiftState = .once }
@@ -501,6 +524,7 @@ final class KeyboardModel: ObservableObject {
             composedWord = ""
 
         case .return:
+            autoSpacedAcceptedWord = nil
             learnCompletedWord(proxy: proxy)
             proxy.insertText("\n")
             composedWord = ""
@@ -512,6 +536,7 @@ final class KeyboardModel: ObservableObject {
             }
 
         case .backspace:
+            autoSpacedAcceptedWord = nil
             // Deleting the trailing space of a completed word means "going
             // back to edit that word": composition resumes with the whole
             // word, so the bar switches from next-word predictions straight
@@ -589,7 +614,12 @@ final class KeyboardModel: ObservableObject {
     private func isCursorAtSentenceStart(proxy: UITextDocumentProxy) -> Bool {
         guard let before = proxy.documentContextBeforeInput, !before.isEmpty else { return true }
         if before.last?.isNewline == true { return true }
-        let trimmed = before.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Closing quotes/brackets may trail the sentence ender — «word?» is
+        // still a sentence end, so capitalization looks through them
+        var trimmed = Substring(before.trimmingCharacters(in: .whitespacesAndNewlines))
+        while let last = trimmed.last, Self.sentenceClosers.contains(last) {
+            trimmed = trimmed.dropLast()
+        }
         guard let last = trimmed.last else { return true }
         return [".", "!", "?"].contains(String(last))
     }
