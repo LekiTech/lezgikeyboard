@@ -24,7 +24,7 @@ final class LearnedWords {
     /// starts being suggested, so a typo made once or twice never surfaces.
     /// User-adjustable via the settings panel's learning speed (1/3/5);
     /// only this visibility threshold changes, never the learning itself.
-    var minVisibleUses = KeyboardSettings.LearnSpeed.normal.minUses
+    var minVisibleUses = KeyboardSettings.LearnSpeed.fast.minUses
     /// A pair must be seen this many times before it produces next-word
     /// suggestions, so a one-off combination never surfaces.
     private static let minPairUses = 2

@@ -56,7 +56,10 @@ struct KeyboardSettings: Equatable {
     var spaceCursor = true
     var spaceLabel = true
     // Learning / long press
-    var learnSpeed: LearnSpeed = .normal
+    // Fast is the product default: a word learned from the very first
+    // use — the deliberate exception to "defaults reproduce pre-settings
+    // behavior" (which was the normal/3 threshold).
+    var learnSpeed: LearnSpeed = .fast
     var calloutDelay: CalloutDelay = .normal
     // Theme
     var theme: Theme = .system

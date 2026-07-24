@@ -40,11 +40,11 @@ replaces custom keyboards with the system one, so passwords are never seen.
       `lezgi_words.sqlite`
 - [x] Boost learned words in ranking; boost picked words above merely typed
       ones
-- [x] Words are stored from the first use but appear in suggestions only
-      after 3 confirmations (typed or picked) — a typo made once or twice
-      never surfaces. Since the settings panel's input page the threshold
-      is user-adjustable (fast 1 / normal 3 / conservative 5); only the
-      threshold changes, never the learning itself
+- [x] Words are stored from the first use; the visibility threshold is
+      user-adjustable (fast 1 / normal 3 / conservative 5) — only the
+      threshold changes, never the learning itself. The product default is
+      fast (1): words surface immediately, and the stricter thresholds
+      remain available as typo protection
 - [x] Suggestions follow the capitalization context (sentence start, empty
       field, Shift, Caps Lock) — consistently for learned and dictionary words
 - [x] Long-press on a learned suggestion offers to remove it from

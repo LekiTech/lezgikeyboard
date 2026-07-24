@@ -159,10 +159,10 @@ so every future ranking change is judged by numbers, one change at a time.
   letters, so a lone `цӏ` is rejected; no digits; no `@ / .`; max 64
   characters. Bumping `filtersVersion` purges old records that no longer
   pass.
-- Visibility threshold: a word appears in suggestions only after
-  **3 confirmations** by default (`count + picked >= minVisibleUses`), so a
-  typo made once or twice never surfaces. The threshold is user-adjustable
-  via the settings panel's learning speed (1 / 3 / 5).
+- Visibility threshold: `count + picked >= minVisibleUses`, user-adjustable
+  via the settings panel's learning speed (1 / 3 / 5). The product default
+  is **fast (1)** — words surface from the first use; the stricter
+  thresholds remain the typo-protection option.
 - Ranking score: `(count + 3·picked) × 2 if used in the last 14 days ×
   (1 + min(bigram count, 4))`.
 - Cleanup: every 2000 learn events all counters are halved (integer
