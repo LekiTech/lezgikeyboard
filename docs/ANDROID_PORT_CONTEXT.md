@@ -151,7 +151,10 @@ themes paint the background explicitly (see §10 Theme).
 - **Long-press callouts** (alternates; delay user-set 0.2 / 0.3 / 0.45 s,
   default 0.3): a horizontal bubble of options, 44 per option; the base
   character is always the first option; finger slides to select, release
-  inserts. Alternates are inserted as whole strings (digraphs):
+  inserts. The options bubble **floats clean with no connecting neck** to
+  the pressed key (row center ≈34pt above the key top; the short-press
+  preview balloon keeps its neck — only the long-press UI is detached).
+  Alternates are inserted as whole strings (digraphs):
 
 ```
 ц → цӏ        у → уь        к → кӏ кь къ    е → ё

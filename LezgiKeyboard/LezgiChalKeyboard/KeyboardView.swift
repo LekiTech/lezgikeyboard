@@ -957,35 +957,26 @@ private struct CalloutBubble: View {
             max(keyFrame.midX, totalWidth / 2 + 6),
             UIScreen.main.bounds.width - totalWidth / 2 - 6
         )
-        let tailHeight: CGFloat = 16
-        let totalHeight = bubbleHeight + tailHeight
-        // Neck extends 9pt into the key to cover its rounded top corners
-        let desiredY = keyFrame.minY + 9 - totalHeight / 2
-        let bubbleY = max(desiredY, totalHeight / 2)
+        // Once the long-press interface is active the connection to the
+        // key disappears: the options bubble floats clean, no neck. Its
+        // position is unchanged from the necked version (center 34pt
+        // above the key top), so only the connection vanishes.
+        let desiredY = keyFrame.minY - 34
+        let bubbleY = max(desiredY, bubbleHeight / 2)
 
-        return VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                ForEach(Array(options.enumerated()), id: \.offset) { i, opt in
-                    let display = isShifted
-                        ? LezgiLayout.applyCase(opt, capsLock: isCapsLock)
-                        : opt
-                    Text(display)
-                        .font(.system(size: 24))
-                        .foregroundColor(i == selectedIndex ? .white : Color(UIColor.label))
-                        .frame(width: optionWidth, height: bubbleHeight)
-                        .background(i == selectedIndex ? Color.blue : Color.kbLetterKeyPressed)
-                }
+        return HStack(spacing: 0) {
+            ForEach(Array(options.enumerated()), id: \.offset) { i, opt in
+                let display = isShifted
+                    ? LezgiLayout.applyCase(opt, capsLock: isCapsLock)
+                    : opt
+                Text(display)
+                    .font(.system(size: 24))
+                    .foregroundColor(i == selectedIndex ? .white : Color(UIColor.label))
+                    .frame(width: optionWidth, height: bubbleHeight)
+                    .background(i == selectedIndex ? Color.blue : Color.kbLetterKeyPressed)
             }
-            .cornerRadius(10)
-
-            // Key-width neck centered under the pressed key, not under the bubble center
-            Rectangle()
-                .fill(Color.kbLetterKeyPressed)
-                .frame(width: keyFrame.width, height: tailHeight)
-                .offset(x: keyFrame.midX - bubbleX)
         }
-        // Flatten bubble + neck into one layer so the shadow wraps the combined
-        // silhouette instead of drawing a seam where the neck meets the bubble
+        .cornerRadius(10)
         .compositingGroup()
         .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
         .position(x: bubbleX, y: bubbleY)
